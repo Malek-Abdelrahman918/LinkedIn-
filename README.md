@@ -68,19 +68,18 @@ at credentials that already live in n8n.
 The workflow is built, tested, and **inactive**. Three things stand between it and a live
 Monday run.
 
-### 1. Create the Google Sheet (required)
+### 1. Google Sheet — ✅ done
 
-Create a spreadsheet with a tab named `Posts` and this exact header row:
+The spreadsheet is created, wired to both Sheets nodes, and verified with a real write:
+
+**[LeadSync LinkedIn Posts](https://docs.google.com/spreadsheets/d/1Ov-pd5H4_hzuJ2TMMrRkTphhJ8MizQ4hrBmKhpCZwTw/edit)** — tab `Posts`, headers:
 
 ```
 Post Date | Pillar | Hook | The Text | Image Idea | Source URL | Status | Generated At
 ```
 
-Then in n8n open **Read Post History** and **Save to Google Sheet** and pick it from the
-Document dropdown. The Google Sheets credential is already attached; only the document
-selection is blank.
-
-Optionally paste the sheet URL into `Set Config → sheetUrl` so it appears in the Slack ping.
+`Set Config → sheetUrl` already points at it, so the link shows up in the Slack ping.
+There are real drafts in it from the verification runs — delete them if you don't want them.
 
 ### 2. Add the Slack credential (required for notifications)
 
@@ -121,8 +120,12 @@ To turn it on:
 
 ### 4. Activate
 
-Toggle the workflow **Active**. Confirm your n8n instance timezone is what you expect
-first — "Monday 9AM" is evaluated in the instance timezone, not necessarily yours.
+Toggle the workflow **Active**.
+
+> ⚠️ **Your n8n instance timezone is UTC.** Confirmed from a live run
+> (`"Timezone": "UTC (UTC+00:00)"`). So "Monday 9AM" currently fires at **09:00 UTC** —
+> 1PM if you're in Dubai. Either change the instance timezone in n8n Settings, or change
+> `triggerAtHour` on the trigger node to compensate.
 
 ---
 
@@ -206,12 +209,19 @@ fails the validator. Across the two test runs, 6 of 6 drafts passed on the first
 
 ## Verified
 
-Both scenarios were run end-to-end against the live workflow:
+Run end-to-end against the live workflow:
 
-- **Normal week** (execution 24) — pulled real Google News angles, produced 3 posts across
-  3 distinct pillars, all passed the validator on the first attempt.
-- **Dead feed** (execution 25) — RSS pinned to a broken response; the evergreen fallback
-  filled all 3 slots and the run completed normally.
+| # | Scenario | Result |
+|---|---|---|
+| 24 | Normal week, Sheets pinned | 3 posts, 3 distinct pillars, all passed the validator first try |
+| 25 | Dead feed (RSS pinned broken) | Evergreen fallback filled all 3 slots, run completed |
+| 26 | Forced rewrite (2 slop drafts pinned) | Validator caught 11 + 11 violations; both rewrote and passed on attempt 2; merge combined 1 passed + 2 rewritten |
+| 29 | **Fully live, nothing pinned** | 3 rows written to the real spreadsheet with correct columns and statuses |
+| 30 | **Live, with history present** | Read the 3 prior rows, fed their hooks into the prompt, and selected 3 different source URLs |
 
-The Google Sheets append was pinned in both runs, since no spreadsheet is selected yet.
-That path goes live with step 1 above.
+Also confirmed: Slack degrades cleanly without a credential
+(`"Node does not have any credentials set"` → workflow continues, drafts survive).
+
+**Still unverified:** the Error Trigger → Alert Failure branch (needs a Slack credential,
+and n8n only fires error triggers on production runs), and the schedule actually firing
+on a Monday (workflow is still inactive).
