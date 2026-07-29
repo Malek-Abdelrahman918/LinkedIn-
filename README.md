@@ -2,7 +2,7 @@
 
 Generates **3 LinkedIn posts every Monday at 9AM**, maps each to one of Malek's 4 content
 pillars, runs them through a deterministic anti-slop validator, and parks them in Google
-Sheets (and Notion) with a WhatsApp ping for review.
+Sheets (and Notion) and emails you a digest for review.
 
 It is not a "generate 3 posts" script. Anything can do that. The difference is the
 [Anti-Slop Protocol](docs/anti-slop-protocol.md), which is enforced in code, not just
@@ -29,12 +29,12 @@ Every Monday 9AM
   → Format Rows
   → Save to Google Sheet    ← SYSTEM OF RECORD, written first
   → Save to Notion          (continues on error)
-  → Notify WhatsApp         (continues on error)
+  → Build Digest → Attach Markdown → Email Digest   (continues on error)
 
 On Failure → Alert Failure  (separate error-trigger branch)
 ```
 
-**The write order is deliberate.** The sheet is written before Notion and WhatsApp, and
+**The write order is deliberate.** The sheet is written before Notion and the email, and
 both of those continue on error. A missing credential costs you a mirror or a notification.
 It never costs you a week of drafts.
 
@@ -45,7 +45,7 @@ It never costs you a week of drafts.
 | Source | Google News RSS, no API key, evergreen fallback | [`docs/sources.md`](docs/sources.md) |
 | Strategy | 4 pillars, deterministic ISO-week rotation | [`docs/pillars.md`](docs/pillars.md) |
 | Writing | Prompt constraints + code validator | [`docs/anti-slop-protocol.md`](docs/anti-slop-protocol.md) |
-| Storage | Google Sheets + Notion, WhatsApp alert | this file |
+| Storage | Google Sheets + Notion, email digest | this file |
 
 ## Repo layout
 
@@ -81,30 +81,39 @@ made the long post column push everything to the floor of a giant row.
 Post Date | Pillar | Hook | The Text | Image Idea | Source URL | Status | Generated At
 ```
 
-`Set Config → sheetUrl` already points at it, so the link shows up in the WhatsApp ping.
+`Set Config → sheetUrl` already points at it, so the link shows up in the email digest.
 There are real drafts in it from the verification runs — delete them if you don't want them.
 
-### 2. Notifications — ⚠️ not delivering
+### 2. Notifications — email, needs one credential
 
-The nodes send via WhatsApp and the API accepts them (execution 32 returned a message ID),
-but **nothing arrives.** An accepted message is not a delivered one, and this is a Meta
-platform rule rather than a config bug:
+**WhatsApp was removed.** Meta only delivers *free-form* WhatsApp messages within 24 hours
+of the recipient last messaging the business number. Outside that window it accepts the
+API call, returns a message ID, and drops the message. A Monday 09:00 cron is never inside
+that window, so it cannot work here regardless of configuration. Only pre-approved
+template messages would, and templates are too rigid for this digest.
 
-> WhatsApp Business only delivers **free-form** messages within **24 hours** of the
-> recipient last messaging the business number. Outside that window Meta accepts the call,
-> returns a message ID, and drops it. Only pre-approved **template** messages get through.
+Email has no such restriction. Three nodes:
 
-A Monday 09:00 cron is never inside that window, so free-form WhatsApp cannot work for
-this. Two ways out:
+| Node | Does |
+|---|---|
+| `Build Digest` | Renders one HTML card per draft: pillar, date, status badge, hook, the full copy-pasteable post, image idea, source link. Also builds a Markdown twin. |
+| `Attach Markdown` | Turns that Markdown into a `.md` file (`leadsync-linkedin-<week>.md`). |
+| `Email Digest` | Sends the HTML body with the file attached. |
 
-- **Telegram** — a bot via @BotFather takes ~2 minutes on a phone, no approval, no sending
-  window. n8n has a native node. Recommended.
-- **WhatsApp template** — create and submit one in Meta Business Manager and wait for
-  approval. Keeps WhatsApp, but templates are rigid and the summary format degrades.
+The error branch emails too.
 
-Until one is done, the drafts still land in the sheet every week — you just aren't told.
+**Verified:** the digest and attachment build correctly — a live run produced a 6.45 kB
+`leadsync-linkedin-2026-07-27.md`. The send itself is **unverified**; `Email Digest` fails
+with `Found credential with no ID` and nothing else.
 
-> The summary uses real emoji, not `:shortcode:` syntax, which WhatsApp doesn't render.
+**What's needed:** a Gmail credential in n8n (**Credentials → New → Gmail OAuth2**), then
+select it on `Email Digest` and `Alert Failure`. Recipient is set to
+`malekabdelrahmanco@gmail.com` on both.
+
+> `Build Digest` reads its rows from `$('Format Rows')`, not `$json`. Save to Google Sheet
+> maps with `defineBelow` and an 8-column schema, so it strips every other field — reading
+> `$json` downstream of it silently yields nothing. That bug cost a debugging round once
+> already.
 
 ### 3. Notion — built, blocked on one share
 
@@ -207,7 +216,7 @@ Nearly everything is in the **Set Config** node — no code edits needed:
 | `pillars` | The 4 pillars | Rotation source |
 | `postsPerWeek` | 3 | Posts generated per run |
 | `historyRows` | 40 | Anti-repetition lookback |
-| `sheetUrl` / `notionUrl` | set / empty | Links included in the WhatsApp ping |
+| `sheetUrl` / `notionUrl` | set / empty | Links included in the email digest |
 
 Voice changes go in `prompts/system-prompt.md`, then into both chainLlm nodes. Banned
 phrases go in the validator *and* the system prompt — the prompt stops most of them, the
@@ -236,7 +245,8 @@ Run end-to-end against the live workflow:
 | 29 | **Fully live, nothing pinned** | 3 rows written to the real spreadsheet with correct columns and statuses |
 | 30 | **Live, with history present** | Read the 3 prior rows, fed their hooks into the prompt, and selected 3 different source URLs |
 | 31 | First WhatsApp attempt | **Failed** — empty message body, see below |
-| 32 | After the fix | WhatsApp delivered, message ID returned |
+| 32 | After the fix | WhatsApp accepted by Meta, but never delivered (24-hour window) |
+| 35 | Email digest | HTML + 6.45 kB `.md` attachment built; send blocked only by the missing credential |
 
 **A real bug that runs 24-30 hid.** The notify node read `$json._alertSummary`, but
 `Save to Google Sheet` maps with `defineBelow` and an 8-column schema, so it drops every

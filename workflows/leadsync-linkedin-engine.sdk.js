@@ -13,7 +13,7 @@
  * n8n instance. No secrets live in this repo.
  */
 
-import { workflow, node, trigger, sticky, merge, ifElse, languageModel, outputParser, expr } from '@n8n/workflow-sdk';
+import { workflow, node, trigger, sticky, merge, ifElse, languageModel, outputParser, expr, newCredential } from '@n8n/workflow-sdk';
 
 const SYSTEM_PROMPT = `You write LinkedIn posts as Malek, founder of LeadSync, an AI automation studio that kills manual sales work: CRM data entry, lead routing, follow-up, tool-to-tool sync.
 You are not a brand account. You are a founder typing between calls.
@@ -129,6 +129,91 @@ function validatePost(post) {
   return { ok: violations.length === 0, violations: violations, text: text };
 }
 `;
+
+
+/**
+ * Renders the weekly review email: one HTML card per draft plus a Markdown twin
+ * that gets attached as a .md file.
+ */
+const DIGEST_SRC = `// Read from Format Rows, NOT $json. Save to Google Sheet maps with \`defineBelow\`
+// and an 8-column schema, so it strips every other field from its output.
+const rows = $('Format Rows').all().map(function (i) { return i.json; });
+const cfg = $('Set Config').first().json;
+const weekOf = $now.minus({ days: $now.weekday - 1 }).toFormat('yyyy-MM-dd');
+
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+const STATUS_STYLE = {
+  DRAFT: 'background:#e8eaed;color:#3c4043',
+  VERIFY_NUMBERS: 'background:#fef7e0;color:#7a5900',
+  NEEDS_REWRITE: 'background:#fce8e6;color:#a50e0e'
+};
+const STATUS_NOTE = {
+  VERIFY_NUMBERS: 'The model invented these figures. Verify or replace every number before posting.',
+  NEEDS_REWRITE: 'Failed the anti-slop validator twice. Saved so you can judge it yourself.'
+};
+
+const cards = rows.map(function (r) {
+  const badge = STATUS_STYLE[r.Status] || STATUS_STYLE.DRAFT;
+  const note = STATUS_NOTE[r.Status];
+  let card = '<div style="border:1px solid #dadce0;border-radius:10px;padding:20px;margin:0 0 20px">';
+  card += '<div style="font-size:12px;color:#5f6368;margin-bottom:10px">';
+  card += '<strong>' + esc(r.Pillar) + '</strong> &nbsp;|&nbsp; ' + esc(r['Post Date']);
+  card += ' &nbsp; <span style="' + badge + ';padding:2px 8px;border-radius:10px;font-size:11px">' + esc(r.Status) + '</span>';
+  card += '</div>';
+  card += '<div style="font-size:17px;font-weight:600;line-height:1.4;margin-bottom:12px">' + esc(r.Hook) + '</div>';
+  if (note) card += '<div style="' + badge + ';padding:8px 12px;border-radius:6px;font-size:13px;margin-bottom:12px">' + esc(note) + '</div>';
+  card += '<div style="white-space:pre-wrap;font-size:14px;line-height:1.6;color:#202124;border-left:3px solid #e8eaed;padding-left:14px">' + esc(r['The Text']) + '</div>';
+  card += '<div style="margin-top:14px;font-size:13px;color:#5f6368"><strong>Image idea:</strong> ' + esc(r['Image Idea']) + '</div>';
+  if (r['Source URL'] && r['Source URL'] !== 'evergreen') {
+    card += '<div style="margin-top:6px;font-size:12px"><a href="' + esc(r['Source URL']) + '">Source article</a></div>';
+  }
+  card += '</div>';
+  return card;
+});
+
+const flagged = rows.filter(function (r) { return r.Status === 'NEEDS_REWRITE'; }).length;
+const unverified = rows.filter(function (r) { return r.Status === 'VERIFY_NUMBERS'; }).length;
+
+let links = '';
+if (cfg.sheetUrl) links += '<a href="' + cfg.sheetUrl + '">Open the sheet</a>';
+if (cfg.notionUrl) links += (links ? ' &nbsp;|&nbsp; ' : '') + '<a href="' + cfg.notionUrl + '">Open in Notion</a>';
+
+let html = '<div style="font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif;max-width:680px;margin:0 auto;padding:8px">';
+html += '<h2 style="margin:0 0 4px">' + rows.length + ' LinkedIn drafts ready</h2>';
+html += '<div style="color:#5f6368;font-size:13px;margin-bottom:20px">Week of ' + weekOf + '</div>';
+if (unverified || flagged) {
+  html += '<div style="background:#fef7e0;border-radius:8px;padding:12px 16px;font-size:13px;margin-bottom:20px">';
+  if (unverified) html += unverified + ' draft(s) contain model-generated metrics. Check every number.<br>';
+  if (flagged) html += flagged + ' draft(s) failed the anti-slop check twice.';
+  html += '</div>';
+}
+html += cards.join('');
+if (links) html += '<div style="font-size:13px;margin-top:8px">' + links + '</div>';
+html += '<div style="color:#9aa0a6;font-size:11px;margin-top:24px">The full week is also attached as Markdown.</div>';
+html += '</div>';
+
+// Markdown twin, attached as a file.
+let md = '# LinkedIn drafts, week of ' + weekOf + '\\n\\n';
+rows.forEach(function (r, i) {
+  md += '## ' + (i + 1) + '. ' + r.Pillar + ' | ' + r['Post Date'] + ' | ' + r.Status + '\\n\\n';
+  if (STATUS_NOTE[r.Status]) md += '> ' + STATUS_NOTE[r.Status] + '\\n\\n';
+  md += r['The Text'] + '\\n\\n';
+  md += '**Image idea:** ' + r['Image Idea'] + '\\n\\n';
+  md += '**Source:** ' + (r['Source URL'] || 'evergreen') + '\\n\\n---\\n\\n';
+});
+
+return [{
+  json: {
+    subject: rows.length + ' LinkedIn drafts ready for review (week of ' + weekOf + ')',
+    html: html,
+    fileName: 'leadsync-linkedin-' + weekOf + '.md',
+    fileB64: Buffer.from(md, 'utf8').toString('base64')
+  }
+}];`;
 
 const scheduleTrigger = trigger({
   type: 'n8n-nodes-base.scheduleTrigger',
@@ -539,26 +624,10 @@ const rows = $input.all().map(function (item) {
 
 rows.sort(function (a, b) { return String(a['Post Date']).localeCompare(String(b['Post Date'])); });
 
-// One alert summary carried on every item; the notify node runs executeOnce.
-// Real emoji, not :shortcodes: - WhatsApp does not render those.
-const lines = rows.map(function (r) {
-  let warn = '';
-  if (r.Status === 'NEEDS_REWRITE') warn = '  \u26a0\ufe0f failed anti-slop twice';
-  else if (r.Status === 'VERIFY_NUMBERS') warn = '  \ud83d\udd0d check the numbers';
-  return '*' + r.Pillar + '* (' + r['Post Date'] + ')' + warn + '\\n' + r.Hook;
-});
-const flagged = rows.filter(function (r) { return r.Status === 'NEEDS_REWRITE'; }).length;
-const unverified = rows.filter(function (r) { return r.Status === 'VERIFY_NUMBERS'; }).length;
-
-let summary = '\ud83d\udcdd *' + rows.length + ' LinkedIn drafts ready for review*\\n\\n' + lines.join('\\n\\n');
-if (flagged) summary += '\\n\\n\u26a0\ufe0f ' + flagged + ' draft(s) failed the anti-slop check twice and are flagged NEEDS_REWRITE.';
-if (unverified) summary += '\\n\\n\ud83d\udd0d ' + unverified + ' Social Proof draft(s) contain metrics the model generated. Verify or replace every number before posting.';
-if (cfg.sheetUrl) summary += '\\n\\nSheet: ' + cfg.sheetUrl;
-if (cfg.notionUrl) summary += '\\nNotion: ' + cfg.notionUrl;
-
-return rows.map(function (r) {
-  return { json: Object.assign({}, r, { _alertSummary: summary }) };
-});`
+// Exactly the 8 sheet columns and nothing else. Build Digest reads these rows back
+// via $('Format Rows') to compose the email, because Save to Google Sheet maps with
+// defineBelow and strips any field not in its schema.
+return rows.map(function (r) { return { json: r }; });`
     }
   }
 });
@@ -643,31 +712,58 @@ const saveToNotion = node({
   }
 });
 
-// WhatsApp rather than Slack: creating a Slack app needs a desktop browser and a
-// credential this instance does not have, while the WhatsApp credential already works
-// and is already used for error alerts in the Dubai lead-handler workflow.
-const notifyWhatsApp = node({
-  type: 'n8n-nodes-base.whatsApp',
+// Email, not WhatsApp. Meta only delivers free-form WhatsApp messages within 24 hours
+// of the recipient messaging the business number; a Monday cron is never inside that
+// window, so the API accepts the send and silently drops it. Email has no such window.
+const buildDigest = node({
+  type: 'n8n-nodes-base.code',
+  version: 2,
+  config: {
+    name: 'Build Digest',
+    parameters: {
+      mode: 'runOnceForAllItems',
+      language: 'javaScript',
+      jsCode: DIGEST_SRC
+    }
+  }
+});
+
+const attachMarkdown = node({
+  type: 'n8n-nodes-base.convertToFile',
   version: 1.1,
   config: {
-    name: 'Notify WhatsApp',
-    executeOnce: true,
-    // Drafts are already in the sheet by now; a failed send costs the ping only.
+    name: 'Attach Markdown',
+    parameters: {
+      operation: 'toBinary',
+      sourceProperty: 'fileB64',
+      options: { fileName: expr('{{ $json.fileName }}'), mimeType: 'text/markdown' }
+    }
+  }
+});
+
+const emailDigest = node({
+  type: 'n8n-nodes-base.gmail',
+  version: 2.2,
+  config: {
+    name: 'Email Digest',
+    // Drafts are already in the sheet by now; a failed send costs the digest only.
     onError: 'continueRegularOutput',
     parameters: {
       resource: 'message',
       operation: 'send',
-      messagingProduct: 'whatsapp',
-      phoneNumberId: '1042618395611960',
-      recipientPhoneNumber: '+201142339381',
-      messageType: 'text',
-      // Read from Format Rows, NOT $json. Save to Google Sheet maps with `defineBelow`
-      // and an 8-column schema, so it drops every other field from its output. Reading
-      // $json here yields undefined and WhatsApp rejects the send with a missing body.
-      textBody: expr("{{ $('Format Rows').first().json._alertSummary }}"),
-      additionalFields: { previewUrl: true }
+      sendTo: 'malekabdelrahmanco@gmail.com',
+      // Read from Build Digest, not $json: Attach Markdown replaces the JSON payload
+      // with the binary wrapper.
+      subject: expr("{{ $('Build Digest').first().json.subject }}"),
+      emailType: 'html',
+      message: expr("{{ $('Build Digest').first().json.html }}"),
+      options: {
+        appendAttribution: false,
+        senderName: 'LeadSync Content Engine',
+        attachmentsUi: { attachmentsBinary: [{ property: 'data' }] }
+      }
     },
-    credentials: { whatsAppApi: { id: '0LIX9sb3jYmhIEen', name: 'WhatsApp account 3' } }
+    credentials: { gmailOAuth2: newCredential('Gmail account') }
   }
 });
 
@@ -678,21 +774,20 @@ const errorTrigger = trigger({
 });
 
 const alertFailure = node({
-  type: 'n8n-nodes-base.whatsApp',
-  version: 1.1,
+  type: 'n8n-nodes-base.gmail',
+  version: 2.2,
   config: {
     name: 'Alert Failure',
     parameters: {
       resource: 'message',
       operation: 'send',
-      messagingProduct: 'whatsapp',
-      phoneNumberId: '1042618395611960',
-      recipientPhoneNumber: '+201142339381',
-      messageType: 'text',
-      textBody: expr('⚠️ *LinkedIn content engine failed*\nWorkflow: {{ $json.workflow.name }}\nFailed at node: {{ $json.execution.lastNodeExecuted }}\nError: {{ $json.execution.error.message }}\n{{ $json.execution.url }}'),
-      additionalFields: {}
+      sendTo: 'malekabdelrahmanco@gmail.com',
+      subject: expr('LinkedIn content engine FAILED at {{ $json.execution.lastNodeExecuted }}'),
+      emailType: 'html',
+      message: expr('<b>The LinkedIn content engine failed.</b><br><br>Workflow: {{ $json.workflow.name }}<br>Failed at node: {{ $json.execution.lastNodeExecuted }}<br>Error: {{ $json.execution.error.message }}<br><br><a href="{{ $json.execution.url }}">Open the execution</a>'),
+      options: { appendAttribution: false, senderName: 'LeadSync Content Engine' }
     },
-    credentials: { whatsAppApi: { id: '0LIX9sb3jYmhIEen', name: 'WhatsApp account 3' } }
+    credentials: { gmailOAuth2: newCredential('Gmail account') }
   }
 });
 
@@ -715,8 +810,8 @@ const noteWriting = sticky(
 );
 
 const noteStorage = sticky(
-  '## 4. Storage and Review\nThe order is deliberate. The **Sheet is the system of record and is written first**. Notion and WhatsApp both continue on error, so a failure there costs a mirror or a notification, never a week of drafts.\n\nNotion still needs a credential before it does anything. See the repo README.',
-  [formatRows, saveToSheet, saveToNotion, notifyWhatsApp],
+  '## 4. Storage and Review\nThe order is deliberate. The **Sheet is the system of record and is written first**. Notion and the email both continue on error, so a failure there costs a mirror or a notification, never a week of drafts.\n\nNotion still needs a credential before it does anything. See the repo README.',
+  [formatRows, saveToSheet, saveToNotion, buildDigest, attachMarkdown, emailDigest],
   { color: 6 }
 );
 
@@ -738,7 +833,9 @@ export default workflow('leadsync-linkedin-engine', 'LeadSync Perpetual LinkedIn
   .to(formatRows)
   .to(saveToSheet)
   .to(saveToNotion)
-  .to(notifyWhatsApp)
+  .to(buildDigest)
+  .to(attachMarkdown)
+  .to(emailDigest)
   .add(errorTrigger)
   .to(alertFailure)
   .add(noteSource)
