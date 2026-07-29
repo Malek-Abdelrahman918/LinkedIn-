@@ -200,23 +200,40 @@ ${artefactSrc()}
            ' L ' + x + ' ' + (b - c) + ' Q ' + x + ' ' + b + ', ' + (x + 20) + ' ' + b;
   }
 
+  // One mark per run of touching elements, not one per group. A group whose
+  // members are not adjacent — rows 2, 3, 4 and 6 of a sheet — would otherwise
+  // union into a single bracket that also spans row 5, marking a row the note
+  // never mentions.
   function measure(card, cb) {
-    var groups = {};
+    var byGroup = {};
     var marked = card.querySelectorAll('[data-ring]');
     for (var i = 0; i < marked.length; i++) {
       var el = marked[i];
       var g = el.getAttribute('data-ring');
       var b = el.getBoundingClientRect();
-      var box = { l: b.left - cb.left, t: b.top - cb.top, r: b.right - cb.left, bt: b.bottom - cb.top };
-      if (!groups[g]) groups[g] = box;
-      else {
-        groups[g].l = Math.min(groups[g].l, box.l);
-        groups[g].t = Math.min(groups[g].t, box.t);
-        groups[g].r = Math.max(groups[g].r, box.r);
-        groups[g].bt = Math.max(groups[g].bt, box.bt);
-      }
+      if (!byGroup[g]) byGroup[g] = [];
+      byGroup[g].push({ l: b.left - cb.left, t: b.top - cb.top, r: b.right - cb.left, bt: b.bottom - cb.top });
     }
-    return groups;
+
+    var shapes = [];
+    Object.keys(byGroup).forEach(function (g) {
+      var boxes = byGroup[g].slice().sort(function (a, b) { return a.t - b.t; });
+      var cur = null;
+      boxes.forEach(function (b) {
+        var touching = cur && b.t - cur.bt <= 14 && b.l < cur.r && b.r > cur.l;
+        var sameRow = cur && Math.abs(b.t - cur.t) < 6;
+        if (touching || sameRow) {
+          cur.l = Math.min(cur.l, b.l);
+          cur.t = Math.min(cur.t, b.t);
+          cur.r = Math.max(cur.r, b.r);
+          cur.bt = Math.max(cur.bt, b.bt);
+        } else {
+          cur = { l: b.l, t: b.t, r: b.r, bt: b.bt };
+          shapes.push(cur);
+        }
+      });
+    });
+    return shapes;
   }
 
   // The model decides how many columns and rows there are, so the artefact has
@@ -241,15 +258,14 @@ ${artefactSrc()}
 
     var cb = card.getBoundingClientRect();
     var svg = card.querySelector('.ink');
-    var groups = measure(card, cb);
+    var shapes = measure(card, cb);
 
-    // A group that is both wide and more than one row deep cannot be circled:
+    // A mark that is both wide and more than one row deep cannot be circled:
     // an ellipse that big bulges off the card and its arcs cover the rows above
     // and below, which is how a calendar ends up circling the two slots the
     // note says are fine. Bracket in the margin instead. The whole card commits
     // to one or the other — mixing a bracket and an ellipse looks like a slip.
-    var useBrackets = Object.keys(groups).some(function (k) {
-      var g = groups[k];
+    var useBrackets = shapes.some(function (g) {
       return (g.r - g.l) > 700 && (g.bt - g.t) > 110;
     });
     if (useBrackets) {
@@ -257,12 +273,11 @@ ${artefactSrc()}
       void art.offsetWidth;
       fit(art);
       cb = card.getBoundingClientRect();
-      groups = measure(card, cb);
+      shapes = measure(card, cb);
     }
 
     var lowest = null;
-    Object.keys(groups).forEach(function (k) {
-      var g = groups[k];
+    shapes.forEach(function (g) {
       var w = g.r - g.l, h = g.bt - g.t;
       if (useBrackets) {
         var x = Math.min(g.r + 26, CARD - 40);
@@ -287,9 +302,15 @@ ${artefactSrc()}
     });
 
     // Park the note under the artefact, whatever height the artefact came out.
+    // A short artefact leaves a lot of paper between the note and the footer,
+    // so the note drifts down into it rather than sitting in the gap's ceiling.
     var artBottom = art.getBoundingClientRect().bottom - cb.top;
     var note = card.querySelector('.note');
-    var noteTop = Math.min(artBottom + 92, 792);
+    note.style.top = (artBottom + 92) + 'px';
+    var noteHeight = note.getBoundingClientRect().height;
+    var footTop = card.querySelector('.foot').getBoundingClientRect().top - cb.top;
+    var spare = footTop - 46 - (artBottom + 92 + noteHeight);
+    var noteTop = Math.min(artBottom + 92 + Math.max(0, spare) * 0.42, 792);
     note.style.top = noteTop + 'px';
     var nb = note.getBoundingClientRect();
     var noteBottom = nb.bottom - cb.top;
