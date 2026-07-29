@@ -65,8 +65,8 @@ at credentials that already live in n8n.
 
 ## Go live
 
-Google Sheets and the email digest are done and verified end to end. Notion needs one
-manual share. The workflow is still **inactive**.
+Every integration is connected and verified end to end. The only thing left is the
+timezone and the Active toggle.
 
 ### 1. Google Sheet — ✅ done
 
@@ -117,9 +117,7 @@ Recipient is `malekabdelrahmanco@gmail.com` on both nodes; credential `Gmail acc
 > `$json` downstream of it silently yields nothing. That bug cost a debugging round once
 > already.
 
-### 3. Notion — built, blocked on one share
-
-Database created and the node is wired to it:
+### 3. Notion — ✅ done
 
 **[LeadSync LinkedIn Content Engine](https://app.notion.com/p/d3f15667704e4f5fa04e620fd16d9003)**
 — data source `00b1b531-360f-41b0-8fcf-24aff32e022a`
@@ -135,16 +133,16 @@ Database created and the node is wired to it:
 | Source URL | URL |
 | Generated At | Created time |
 
-The `Notion account 2` credential is attached and the node is enabled. **One manual step
-remains:** on the database page, **⋯ → Connections → Connect to →** the integration.
+Verified on execution 37: pages created with every property mapped, including
+`Status: VERIFY_NUMBERS`. `Set Config → notionUrl` is populated, so the digest carries an
+"Open in Notion" link.
 
-Notion's API deliberately forbids an integration from granting itself access, so this
-cannot be automated. Until it's done, `getDataSources` returns an empty list and the node
-fails on every run — harmlessly, since it continues on error and the sheet is already
-written by that point.
-
-> Note: `Status` is a **select**, not a Notion `status` property. The node maps it with
-> `Status|select`. Using `|status` fails silently.
+> `Status` is a **select**, not a Notion `status` property, so the node maps it with
+> `Status|select`. Using `|status` fails silently — that cost a round to find.
+>
+> Notion's API forbids an integration granting itself access, so the database had to be
+> shared from the Notion UI (**⋯ → Connections → Connect to**). Nothing about that step
+> could be automated.
 
 ### 4. Activate
 
@@ -250,6 +248,7 @@ Run end-to-end against the live workflow:
 | 32 | After the fix | WhatsApp accepted by Meta, but never delivered (24-hour window) |
 | 35 | Email digest, no credential | HTML + 6.45 kB `.md` attachment built; send blocked only by the missing credential |
 | 36 | **Email digest, live** | Sent. Gmail returned `SENT` and a message ID |
+| 37 | **Full stack, live** | Sheet rows + Notion pages (all properties correct) + email sent |
 
 **A real bug that runs 24-30 hid.** The notify node read `$json._alertSummary`, but
 `Save to Google Sheet` maps with `defineBelow` and an 8-column schema, so it drops every
@@ -257,6 +256,6 @@ other field from its output. The summary never reached the notify node. Every ea
 Slack run had the same defect — the "no credentials set" error fired first and masked it.
 The node now reads `$('Format Rows').first().json._alertSummary` directly.
 
-**Still unverified:** the Error Trigger → Alert Failure branch (n8n only fires error
-triggers on production runs, so it'll prove itself the first time a live run breaks), and
-the schedule actually firing on a Monday (the workflow is still inactive).
+**Still unverified:** the Error Trigger → Alert Failure branch, since n8n only fires error
+triggers on production runs — it proves itself the first time a live run breaks. And the
+schedule actually firing on a Monday, since the workflow is still inactive.
