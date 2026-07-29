@@ -1,0 +1,79 @@
+[
+  {
+    "headline": "monday's portal leads.",
+    "note": "the only three that booked\nare the only three we answered fast.",
+    "footer": "nobody enquires at 22:41 and waits until 09:12. they message the next agent.",
+    "artefact": {
+      "type": "sheet",
+      "columns": ["Enquiry", "Portal", "Came in", "We replied", "Gap", "Outcome"],
+      "rows": [
+        { "cells": ["A. Haddad", "Property Finder", "22:41", "09:12", "!10h 31m", "!No response"] },
+        { "cells": ["M. Sultan", "Bayut", "08:52", "08:56", "~4m", "~Viewing booked"], "mark": "g1" },
+        { "cells": ["R. Kapoor", "Property Finder", "19:03", "01:15", "!6h 12m", "!No response"] },
+        { "cells": ["L. Farouk", "Website", "10:20", "10:27", "~7m", "~Viewing booked"], "mark": "g2" },
+        { "cells": ["S. Mansour", "Dubizzle", "23:14", "08:18", "!9h 04m", "!Went cold"] },
+        { "cells": ["K. Oyelaran", "Bayut", "11:41", "11:52", "~11m", "~Viewing booked"], "mark": "g3" },
+        { "cells": ["T. Nasser", "Property Finder", "21:37", "10:59", "!13h 22m", "!No response"] },
+        { "cells": ["J. Almeida", "Dubizzle", "16:08", "18:56", "!2h 48m", "!Went cold"] }
+      ]
+    }
+  },
+  {
+    "headline": "the enquiry we lost while asleep.",
+    "note": "ten and a half hours between these two.\nhe had already booked with someone else.",
+    "footer": "the reply was good. the timing was the product.",
+    "artefact": {
+      "type": "chat",
+      "title": "JVC studio — portal enquiry",
+      "subtitle": "+971 55 •• 9082",
+      "tail": "no reply",
+      "messages": [
+        { "dir": "in", "text": "Hi, is the JVC studio still available?", "time": "22:41" },
+        { "dir": "in", "text": "I can view tomorrow morning if yes", "time": "22:44", "mark": "g1" },
+        { "sep": "next morning" },
+        { "dir": "in", "text": "?", "time": "08:02" },
+        { "dir": "out", "text": "Hi! Yes it's still available 😊 when suits you?", "time": "09:18 ✓✓", "mark": "g2" }
+      ]
+    }
+  },
+  {
+    "headline": "tuesday. my actual calendar.",
+    "note": "six hours of admin.\ntwo hours of selling.",
+    "footer": "i did not hire an agent. i hired a data entry clerk.",
+    "artefact": {
+      "type": "calendar",
+      "slots": [
+        { "time": "08:00", "label": "Reply to portal enquiries", "tone": "admin", "mark": "g1" },
+        { "time": "09:00", "label": "Re-enter yesterday's leads into CRM", "tone": "admin", "mark": "g1" },
+        { "time": "10:00", "label": "Viewing — Marina 2BR", "tone": "sell" },
+        { "time": "11:00", "label": "Update listings on 3 portals", "tone": "admin", "mark": "g2" },
+        { "time": "12:00", "label": "Chase owner for Ejari + title deed", "tone": "admin", "mark": "g2" },
+        { "time": "13:00", "label": "Call back missed numbers", "tone": "admin", "mark": "g2" },
+        { "time": "14:00", "label": "Viewing — Business Bay 1BR", "tone": "sell" },
+        { "time": "15:00", "label": "Fix duplicate leads in sheet", "tone": "admin", "mark": "g3" }
+      ]
+    }
+  },
+  {
+    "headline": "why this one is not moving.",
+    "note": "ninety-four days live, eleven photos,\nand nothing touched since april.",
+    "footer": "the listing was not competing. it was sitting there getting older.",
+    "artefact": {
+      "type": "listing",
+      "price": "AED 1,690,000",
+      "address": "2 BR Apartment · Jumeirah Village Circle",
+      "meta": ["1,204 sqft", "Balcony", "Unfurnished"],
+      "photoCount": "11 photos",
+      "photoMark": "g2",
+      "badges": [
+        { "text": "Listed 94 days ago", "tone": "warn", "mark": "g1" },
+        { "text": "Last updated 14 Apr", "tone": "warn", "mark": "g1" },
+        { "text": "Ref DXB-4417" },
+        { "text": "Vacant on transfer" }
+      ],
+      "description": "Bright two bedroom in a quiet tower, close to the circle. Chiller free, one parking bay, community view from the balcony.",
+      "agent": "Reem · listed by agency",
+      "buttons": ["Call", "Email", "WhatsApp"]
+    }
+  }
+]

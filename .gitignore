@@ -21,3 +21,6 @@ workflows/*.local.json
 # Logs
 *.log
 npm-debug.log*
+
+# Local render output — regenerate with node render/preview.js
+render/out/
