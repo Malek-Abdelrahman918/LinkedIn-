@@ -65,8 +65,8 @@ at credentials that already live in n8n.
 
 ## Go live
 
-Google Sheets is done and verified. Notion and notifications each need one manual step
-that cannot be automated. The workflow is still **inactive**.
+Google Sheets and the email digest are done and verified end to end. Notion needs one
+manual share. The workflow is still **inactive**.
 
 ### 1. Google Sheet — ✅ done
 
@@ -84,7 +84,7 @@ Post Date | Pillar | Hook | The Text | Image Idea | Source URL | Status | Genera
 `Set Config → sheetUrl` already points at it, so the link shows up in the email digest.
 There are real drafts in it from the verification runs — delete them if you don't want them.
 
-### 2. Notifications — email, needs one credential
+### 2. Email digest — ✅ done
 
 **WhatsApp was removed.** Meta only delivers *free-form* WhatsApp messages within 24 hours
 of the recipient last messaging the business number. Outside that window it accepts the
@@ -102,13 +102,15 @@ Email has no such restriction. Three nodes:
 
 The error branch emails too.
 
-**Verified:** the digest and attachment build correctly — a live run produced a 6.45 kB
-`leadsync-linkedin-2026-07-27.md`. The send itself is **unverified**; `Email Digest` fails
-with `Found credential with no ID` and nothing else.
+**Verified end to end.** Execution 36 sent successfully: Gmail returned
+`labelIds: ["SENT"]` and message ID `19fae361c7f3c653`. The attachment is a 6.45 kB
+`leadsync-linkedin-2026-07-27.md`.
 
-**What's needed:** a Gmail credential in n8n (**Credentials → New → Gmail OAuth2**), then
-select it on `Email Digest` and `Alert Failure`. Recipient is set to
-`malekabdelrahmanco@gmail.com` on both.
+Note the difference from the WhatsApp attempt: Gmail reporting `SENT` means the message
+is really in the Sent folder, whereas Meta returning a message ID only meant *accepted*.
+Not the same claim.
+
+Recipient is `malekabdelrahmanco@gmail.com` on both nodes; credential `Gmail account`.
 
 > `Build Digest` reads its rows from `$('Format Rows')`, not `$json`. Save to Google Sheet
 > maps with `defineBelow` and an 8-column schema, so it strips every other field — reading
@@ -246,7 +248,8 @@ Run end-to-end against the live workflow:
 | 30 | **Live, with history present** | Read the 3 prior rows, fed their hooks into the prompt, and selected 3 different source URLs |
 | 31 | First WhatsApp attempt | **Failed** — empty message body, see below |
 | 32 | After the fix | WhatsApp accepted by Meta, but never delivered (24-hour window) |
-| 35 | Email digest | HTML + 6.45 kB `.md` attachment built; send blocked only by the missing credential |
+| 35 | Email digest, no credential | HTML + 6.45 kB `.md` attachment built; send blocked only by the missing credential |
+| 36 | **Email digest, live** | Sent. Gmail returned `SENT` and a message ID |
 
 **A real bug that runs 24-30 hid.** The notify node read `$json._alertSummary`, but
 `Save to Google Sheet` maps with `defineBelow` and an 8-column schema, so it drops every
