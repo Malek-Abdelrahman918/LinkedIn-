@@ -204,8 +204,99 @@ function validatePost(post) {
   return { ok: violations.length === 0, violations, text };
 }
 
+
+/* ---------------------------------------------------------------------------
+ * The visual
+ * ------------------------------------------------------------------------ */
+
+const ARTEFACT_TYPES = ['sheet', 'chat', 'calendar', 'listing'];
+
+/**
+ * Checks the `visual` object that drives the image.
+ *
+ * The model returns the artefact as a JSON string, because the four artefact
+ * shapes are a union and the structured-output parser can only hold one shape.
+ * Returns { ok, violations, visual } with `visual.artefact` parsed, so the rest
+ * of the workflow never has to think about the string form.
+ */
+function validateVisual(raw) {
+  const violations = [];
+  if (!raw || typeof raw !== 'object') {
+    return { ok: false, violations: ['visual is missing entirely.'], visual: null };
+  }
+
+  for (const field of ['headline', 'note', 'footer']) {
+    if (typeof raw[field] !== 'string' || !raw[field].trim()) {
+      violations.push(`visual.${field} is missing.`);
+    }
+  }
+  if (typeof raw.headline === 'string' && raw.headline.length > 60) {
+    violations.push(`visual.headline is ${raw.headline.length} characters; keep it under 60.`);
+  }
+  for (const line of String(raw.note || '').split('\n')) {
+    if (line.length > 52) {
+      violations.push(`Note line is ${line.length} characters; keep each under 52 so it fits the card.`);
+    }
+  }
+
+  let artefact = null;
+  try {
+    artefact = typeof raw.artefact_json === 'string' ? JSON.parse(raw.artefact_json) : raw.artefact;
+  } catch (err) {
+    violations.push(`visual.artefact_json is not valid JSON: ${err.message}`);
+  }
+
+  if (!artefact || typeof artefact !== 'object') {
+    violations.push('visual.artefact is missing.');
+    return { ok: false, violations, visual: null };
+  }
+  if (!ARTEFACT_TYPES.includes(artefact.type)) {
+    violations.push(`visual.artefact.type "${artefact.type}" is not one of ${ARTEFACT_TYPES.join(', ')}.`);
+    return { ok: false, violations, visual: null };
+  }
+
+  // The pen is the design. An unmarked artefact renders as a plain screenshot.
+  let marks = 0;
+  if (artefact.type === 'sheet') {
+    const cols = (artefact.columns || []).length;
+    if (cols < 3) violations.push('A sheet needs at least 3 columns.');
+    const rows = artefact.rows || [];
+    if (rows.length < 4) violations.push('A sheet needs at least 4 rows to read as real data.');
+    rows.forEach((r, i) => {
+      if (r && r.mark) marks++;
+      const n = (r && r.cells ? r.cells : []).length;
+      if (n !== cols) violations.push(`Sheet row ${i + 1} has ${n} cells but there are ${cols} columns.`);
+    });
+  } else if (artefact.type === 'chat') {
+    const msgs = artefact.messages || [];
+    if (msgs.length < 3) violations.push('A chat needs at least 3 messages.');
+    msgs.forEach((m) => { if (m && m.mark) marks++; });
+  } else if (artefact.type === 'calendar') {
+    const slots = artefact.slots || [];
+    if (slots.length < 5) violations.push('A calendar needs at least 5 slots.');
+    slots.forEach((s) => { if (s && s.mark) marks++; });
+  } else if (artefact.type === 'listing') {
+    if (!artefact.price) violations.push('A listing needs a price.');
+    if (!artefact.address) violations.push('A listing needs an address.');
+    if (artefact.photoMark) marks++;
+    if (artefact.priceMark) marks++;
+    (artefact.badges || []).forEach((b) => { if (b && b.mark) marks++; });
+  }
+  if (marks === 0) violations.push('Nothing in the artefact is marked, so the pen has nothing to circle.');
+
+  const visual = {
+    headline: String(raw.headline || ''),
+    note: String(raw.note || ''),
+    footer: String(raw.footer || ''),
+    artefact,
+  };
+  return { ok: violations.length === 0, violations, visual };
+}
+
 module.exports = {
   validatePost,
+  validateVisual,
+  ARTEFACT_TYPES,
   assemblePost,
   BANNED_PHRASES,
   BANNED_OPENERS,

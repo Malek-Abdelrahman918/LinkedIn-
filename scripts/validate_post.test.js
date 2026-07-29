@@ -165,3 +165,85 @@ test('a slop post accumulates multiple violations', () => {
   assert.strictEqual(result.ok, false);
   assert.ok(result.violations.length >= 6, `only ${result.violations.length} violations`);
 });
+
+/* ---------------------------------------------------------------------------
+ * The visual
+ * ------------------------------------------------------------------------ */
+
+const { validateVisual } = require('./validate_post.js');
+
+function goodVisual(overrides = {}) {
+  return {
+    headline: "monday's portal leads.",
+    note: 'the only two that booked\nare the only two we answered fast.',
+    footer: 'nobody enquires at 22:41 and waits until 09:12.',
+    artefact_json: JSON.stringify({
+      type: 'sheet',
+      columns: ['Enquiry', 'Gap', 'Outcome'],
+      rows: [
+        { cells: ['A. Haddad', '!10h 31m', '!No response'] },
+        { cells: ['M. Sultan', '~4m', '~Viewing booked'], mark: 'g1' },
+        { cells: ['R. Kapoor', '!6h 12m', '!No response'] },
+        { cells: ['L. Farouk', '~7m', '~Viewing booked'], mark: 'g2' },
+      ],
+    }),
+    ...overrides,
+  };
+}
+
+test('a good visual passes and comes back with the artefact parsed', () => {
+  const result = validateVisual(goodVisual());
+  assert.deepStrictEqual(result.violations, []);
+  assert.strictEqual(result.ok, true);
+  assert.strictEqual(result.visual.artefact.type, 'sheet');
+  assert.strictEqual(result.visual.artefact.rows.length, 4);
+});
+
+test('a missing visual is a violation, not a crash', () => {
+  const result = validateVisual(undefined);
+  assert.strictEqual(result.ok, false);
+  assert.match(result.violations[0], /visual is missing/);
+});
+
+test('malformed artefact JSON is reported rather than thrown', () => {
+  const result = validateVisual(goodVisual({ artefact_json: '{"type":"sheet",' }));
+  assert.strictEqual(result.ok, false);
+  assert.ok(result.violations.some((v) => v.includes('not valid JSON')));
+});
+
+test('an unknown artefact type is rejected', () => {
+  const result = validateVisual(goodVisual({ artefact_json: '{"type":"dashboard"}' }));
+  assert.strictEqual(result.ok, false);
+  assert.ok(result.violations.some((v) => v.includes('dashboard')));
+});
+
+test('an artefact with nothing marked is rejected', () => {
+  const artefact = JSON.parse(goodVisual().artefact_json);
+  artefact.rows.forEach((r) => delete r.mark);
+  const result = validateVisual(goodVisual({ artefact_json: JSON.stringify(artefact) }));
+  assert.ok(result.violations.some((v) => v.includes('nothing to circle')));
+});
+
+test('a ragged sheet row is reported against the column count', () => {
+  const artefact = JSON.parse(goodVisual().artefact_json);
+  artefact.rows[1].cells = ['short'];
+  const result = validateVisual(goodVisual({ artefact_json: JSON.stringify(artefact) }));
+  assert.ok(result.violations.some((v) => v.includes('row 2') && v.includes('3 columns')));
+});
+
+test('a note line too long for the card is reported', () => {
+  const result = validateVisual(goodVisual({
+    note: 'this line is far too long to fit on the card in caveat at forty seven pixels',
+  }));
+  assert.ok(result.violations.some((v) => v.includes('characters')));
+});
+
+test('a calendar with too few slots is rejected', () => {
+  const result = validateVisual(goodVisual({
+    artefact_json: JSON.stringify({
+      type: 'calendar',
+      slots: [{ time: '08:00', label: 'x', tone: 'admin', mark: 'g1' }],
+    }),
+  }));
+  assert.ok(result.violations.some((v) => v.includes('at least 5 slots')));
+});
