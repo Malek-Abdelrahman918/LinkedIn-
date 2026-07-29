@@ -28,7 +28,7 @@ Every Monday 9AM
   → All Drafts                                  ←┘
   → Format Rows
   → Save to Google Sheet    ← SYSTEM OF RECORD, written first
-  → Save to Notion          (disabled until credential exists)
+  → Save to Notion          (continues on error)
   → Notify WhatsApp         (continues on error)
 
 On Failure → Alert Failure  (separate error-trigger branch)
@@ -65,13 +65,15 @@ at credentials that already live in n8n.
 
 ## Go live
 
-Sheets and WhatsApp are done and verified. The workflow is still **inactive** — only the
-timezone check and the Active toggle stand between it and a live Monday run. Notion is
-optional.
+Google Sheets is done and verified. Notion and notifications each need one manual step
+that cannot be automated. The workflow is still **inactive**.
 
 ### 1. Google Sheet — ✅ done
 
-The spreadsheet is created, wired to both Sheets nodes, and verified with a real write:
+Created, wired to both Sheets nodes, verified with a real write, and formatted for
+legibility (frozen bold header, **vertical align top**, `CLIP` wrapping so each row is one
+line, per-column widths). Sheets defaults vertical alignment to *bottom*, which is what
+made the long post column push everything to the floor of a giant row.
 
 **[LeadSync LinkedIn Posts](https://docs.google.com/spreadsheets/d/1Ov-pd5H4_hzuJ2TMMrRkTphhJ8MizQ4hrBmKhpCZwTw/edit)** — tab `Posts`, headers:
 
@@ -82,46 +84,56 @@ Post Date | Pillar | Hook | The Text | Image Idea | Source URL | Status | Genera
 `Set Config → sheetUrl` already points at it, so the link shows up in the WhatsApp ping.
 There are real drafts in it from the verification runs — delete them if you don't want them.
 
-### 2. WhatsApp notifications — ✅ done
+### 2. Notifications — ⚠️ not delivering
 
-Notifications go to **WhatsApp**, not Slack. Creating a Slack app needs a desktop browser
-and a credential this instance doesn't have; the WhatsApp credential already works and is
-already used for error alerts in the Dubai lead-handler workflow.
+The nodes send via WhatsApp and the API accepts them (execution 32 returned a message ID),
+but **nothing arrives.** An accepted message is not a delivered one, and this is a Meta
+platform rule rather than a config bug:
 
-- `Notify WhatsApp` — weekly summary: 3 hooks, review flags, sheet link.
-- `Alert Failure` — fires from the Error Trigger branch when a run breaks.
+> WhatsApp Business only delivers **free-form** messages within **24 hours** of the
+> recipient last messaging the business number. Outside that window Meta accepts the call,
+> returns a message ID, and drops it. Only pre-approved **template** messages get through.
 
-Verified delivered (execution 32 returned a WhatsApp message ID). To redirect, change
-`recipientPhoneNumber` on either node.
+A Monday 09:00 cron is never inside that window, so free-form WhatsApp cannot work for
+this. Two ways out:
 
-> The summary uses real emoji, not Slack `:shortcode:` syntax, which WhatsApp doesn't
-> render. If you ever move back to Slack, that's the one extra thing to change in
-> `Format Rows`.
+- **Telegram** — a bot via @BotFather takes ~2 minutes on a phone, no approval, no sending
+  window. n8n has a native node. Recommended.
+- **WhatsApp template** — create and submit one in Meta Business Manager and wait for
+  approval. Keeps WhatsApp, but templates are rigid and the summary format degrades.
 
-### 3. Enable Notion (optional)
+Until one is done, the drafts still land in the sheet every week — you just aren't told.
 
-The Notion node ships **disabled**, because n8n refuses to execute a Notion node with no
-Data Source selected — leaving it enabled-but-blank would have blocked the whole workflow
-from running at all.
+> The summary uses real emoji, not `:shortcode:` syntax, which WhatsApp doesn't render.
 
-To turn it on:
+### 3. Notion — built, blocked on one share
 
-1. Create a Notion internal integration and add the credential to n8n.
-2. Create a database named **LeadSync LinkedIn Content Engine** with these properties:
+Database created and the node is wired to it:
 
-   | Property | Type |
-   |---|---|
-   | Hook | Title |
-   | Post Date | Date |
-   | Pillar | Select — `Educational`, `Social Proof`, `Thought Leadership`, `Personal` |
-   | The Text | Text |
-   | Image Idea | Text |
-   | Source URL | URL |
-   | Status | Status — `DRAFT`, `VERIFY_NUMBERS`, `NEEDS_REWRITE` |
+**[LeadSync LinkedIn Content Engine](https://app.notion.com/p/d3f15667704e4f5fa04e620fd16d9003)**
+— data source `00b1b531-360f-41b0-8fcf-24aff32e022a`
 
-3. Share the database with your integration.
-4. In n8n, enable **Save to Notion**, pick the Data Source, and confirm the property
-   mappings resolved.
+| Property | Type |
+|---|---|
+| Hook | Title |
+| Post Date | Date |
+| Pillar | Select — `Educational`, `Social Proof`, `Thought Leadership`, `Personal` |
+| Status | Select — `DRAFT`, `VERIFY_NUMBERS`, `NEEDS_REWRITE`, `APPROVED`, `POSTED` |
+| The Text | Text |
+| Image Idea | Text |
+| Source URL | URL |
+| Generated At | Created time |
+
+The `Notion account 2` credential is attached and the node is enabled. **One manual step
+remains:** on the database page, **⋯ → Connections → Connect to →** the integration.
+
+Notion's API deliberately forbids an integration from granting itself access, so this
+cannot be automated. Until it's done, `getDataSources` returns an empty list and the node
+fails on every run — harmlessly, since it continues on error and the sheet is already
+written by that point.
+
+> Note: `Status` is a **select**, not a Notion `status` property. The node maps it with
+> `Status|select`. Using `|status` fails silently.
 
 ### 4. Activate
 

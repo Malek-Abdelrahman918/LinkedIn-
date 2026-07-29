@@ -605,29 +605,41 @@ const saveToSheet = node({
 // Shipped DISABLED. The Notion node refuses to execute without a Data Source
 // selected, and no Notion credential exists in the instance yet. Enable after
 // creating the credential and picking the database. See the README.
+// Enabled, but inert until the database is shared with the n8n integration.
+// Notion's API forbids an integration granting itself access, so that share is a
+// manual step: database page -> Connections -> Connect to -> the integration.
+// Safe to leave enabled now that dataSourceId is populated; an empty Data Source
+// blocks the whole workflow from executing, a permissions failure does not.
 const saveToNotion = node({
   type: 'n8n-nodes-base.notion',
   version: 3,
   config: {
     name: 'Save to Notion',
-    disabled: true,
     onError: 'continueRegularOutput',
     parameters: {
       resource: 'databasePage',
       operation: 'create',
-      dataSourceId: { __rl: true, mode: 'list', value: '', cachedResultName: 'LeadSync LinkedIn Content Engine' },
+      dataSourceId: {
+        __rl: true,
+        mode: 'id',
+        value: '00b1b531-360f-41b0-8fcf-24aff32e022a',
+        cachedResultName: 'LeadSync LinkedIn Content Engine'
+      },
       title: expr('{{ $json.Hook }}'),
       propertiesUi: {
         propertyValues: [
           { key: 'Post Date|date', includeTime: false, date: expr('{{ $json["Post Date"] }}') },
           { key: 'Pillar|select', selectValue: expr('{{ $json.Pillar }}') },
+          // Status is a *select*, not a Notion `status` property. Using `|status`
+          // here silently fails to map.
+          { key: 'Status|select', selectValue: expr('{{ $json.Status }}') },
           { key: 'The Text|rich_text', textContent: expr('{{ $json["The Text"] }}') },
           { key: 'Image Idea|rich_text', textContent: expr('{{ $json["Image Idea"] }}') },
-          { key: 'Source URL|url', urlValue: expr('{{ $json["Source URL"] }}'), ignoreIfEmpty: true },
-          { key: 'Status|status', statusValue: expr('{{ $json.Status }}') }
+          { key: 'Source URL|url', urlValue: expr('{{ $json["Source URL"] }}'), ignoreIfEmpty: true }
         ]
       }
-    }
+    },
+    credentials: { notionApi: { id: 'wXNmh55cmSH48XPB', name: 'Notion account 2' } }
   }
 });
 
