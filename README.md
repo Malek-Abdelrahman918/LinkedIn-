@@ -2,7 +2,7 @@
 
 Generates **3 LinkedIn posts every Monday at 9AM**, maps each to one of Malek's 4 content
 pillars, runs them through a deterministic anti-slop validator, and parks them in Google
-Sheets (and Notion) with a Slack ping for review.
+Sheets (and Notion) with a WhatsApp ping for review.
 
 It is not a "generate 3 posts" script. Anything can do that. The difference is the
 [Anti-Slop Protocol](docs/anti-slop-protocol.md), which is enforced in code, not just
@@ -29,13 +29,13 @@ Every Monday 9AM
   → Format Rows
   → Save to Google Sheet    ← SYSTEM OF RECORD, written first
   → Save to Notion          (disabled until credential exists)
-  → Notify Slack            (continues on error)
+  → Notify WhatsApp         (continues on error)
 
 On Failure → Alert Failure  (separate error-trigger branch)
 ```
 
-**The write order is deliberate.** The sheet is written before Notion and Slack, and both
-of those continue on error. A missing credential costs you a mirror or a notification.
+**The write order is deliberate.** The sheet is written before Notion and WhatsApp, and
+both of those continue on error. A missing credential costs you a mirror or a notification.
 It never costs you a week of drafts.
 
 ## Layers
@@ -45,7 +45,7 @@ It never costs you a week of drafts.
 | Source | Google News RSS, no API key, evergreen fallback | [`docs/sources.md`](docs/sources.md) |
 | Strategy | 4 pillars, deterministic ISO-week rotation | [`docs/pillars.md`](docs/pillars.md) |
 | Writing | Prompt constraints + code validator | [`docs/anti-slop-protocol.md`](docs/anti-slop-protocol.md) |
-| Storage | Google Sheets + Notion, Slack alert | this file |
+| Storage | Google Sheets + Notion, WhatsApp alert | this file |
 
 ## Repo layout
 
@@ -65,8 +65,9 @@ at credentials that already live in n8n.
 
 ## Go live
 
-The workflow is built, tested, and **inactive**. Three things stand between it and a live
-Monday run.
+Sheets and WhatsApp are done and verified. The workflow is still **inactive** — only the
+timezone check and the Active toggle stand between it and a live Monday run. Notion is
+optional.
 
 ### 1. Google Sheet — ✅ done
 
@@ -78,20 +79,24 @@ The spreadsheet is created, wired to both Sheets nodes, and verified with a real
 Post Date | Pillar | Hook | The Text | Image Idea | Source URL | Status | Generated At
 ```
 
-`Set Config → sheetUrl` already points at it, so the link shows up in the Slack ping.
+`Set Config → sheetUrl` already points at it, so the link shows up in the WhatsApp ping.
 There are real drafts in it from the verification runs — delete them if you don't want them.
 
-### 2. Add the Slack credential (required for notifications)
+### 2. WhatsApp notifications — ✅ done
 
-Your n8n instance has no Slack credential yet. Create a Slack app with `chat:write`, add
-it to n8n, then set it on **Notify Slack** and **Alert Failure**. Both are pre-pointed at
-`#linkedin-drafts` — change the channel in the node or in `Set Config`.
+Notifications go to **WhatsApp**, not Slack. Creating a Slack app needs a desktop browser
+and a credential this instance doesn't have; the WhatsApp credential already works and is
+already used for error alerts in the Dubai lead-handler workflow.
 
-Until this exists, the workflow still runs and still fills the sheet. You just won't get
-pinged.
+- `Notify WhatsApp` — weekly summary: 3 hooks, review flags, sheet link.
+- `Alert Failure` — fires from the Error Trigger branch when a run breaks.
 
-> Your WhatsApp credential already works. If you'd rather get the alerts there, swapping
-> the two Slack nodes for WhatsApp nodes is a five-minute change and needs no new setup.
+Verified delivered (execution 32 returned a WhatsApp message ID). To redirect, change
+`recipientPhoneNumber` on either node.
+
+> The summary uses real emoji, not Slack `:shortcode:` syntax, which WhatsApp doesn't
+> render. If you ever move back to Slack, that's the one extra thing to change in
+> `Format Rows`.
 
 ### 3. Enable Notion (optional)
 
@@ -190,7 +195,7 @@ Nearly everything is in the **Set Config** node — no code edits needed:
 | `pillars` | The 4 pillars | Rotation source |
 | `postsPerWeek` | 3 | Posts generated per run |
 | `historyRows` | 40 | Anti-repetition lookback |
-| `sheetUrl` / `notionUrl` | empty | Links included in the Slack ping |
+| `sheetUrl` / `notionUrl` | set / empty | Links included in the WhatsApp ping |
 
 Voice changes go in `prompts/system-prompt.md`, then into both chainLlm nodes. Banned
 phrases go in the validator *and* the system prompt — the prompt stops most of them, the
@@ -199,7 +204,7 @@ validator catches the rest.
 ### Cost
 
 6 RSS fetches (free) and 3 GPT-5.4 calls per week, plus one extra call per draft that
-fails the validator. Across the two test runs, 6 of 6 drafts passed on the first attempt.
+fails the validator. Across every unpinned run, all drafts passed on the first attempt.
 
 > The brief specified GPT-4o. n8n's current node contract rejects it as superseded and
 > will not offer it as a valid choice, so this uses **GPT-5.4** on the same OpenAI
@@ -218,10 +223,15 @@ Run end-to-end against the live workflow:
 | 26 | Forced rewrite (2 slop drafts pinned) | Validator caught 11 + 11 violations; both rewrote and passed on attempt 2; merge combined 1 passed + 2 rewritten |
 | 29 | **Fully live, nothing pinned** | 3 rows written to the real spreadsheet with correct columns and statuses |
 | 30 | **Live, with history present** | Read the 3 prior rows, fed their hooks into the prompt, and selected 3 different source URLs |
+| 31 | First WhatsApp attempt | **Failed** — empty message body, see below |
+| 32 | After the fix | WhatsApp delivered, message ID returned |
 
-Also confirmed: Slack degrades cleanly without a credential
-(`"Node does not have any credentials set"` → workflow continues, drafts survive).
+**A real bug that runs 24-30 hid.** The notify node read `$json._alertSummary`, but
+`Save to Google Sheet` maps with `defineBelow` and an 8-column schema, so it drops every
+other field from its output. The summary never reached the notify node. Every earlier
+Slack run had the same defect — the "no credentials set" error fired first and masked it.
+The node now reads `$('Format Rows').first().json._alertSummary` directly.
 
-**Still unverified:** the Error Trigger → Alert Failure branch (needs a Slack credential,
-and n8n only fires error triggers on production runs), and the schedule actually firing
-on a Monday (workflow is still inactive).
+**Still unverified:** the Error Trigger → Alert Failure branch (n8n only fires error
+triggers on production runs, so it'll prove itself the first time a live run breaks), and
+the schedule actually firing on a Monday (the workflow is still inactive).

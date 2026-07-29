@@ -539,24 +539,25 @@ const rows = $input.all().map(function (item) {
 
 rows.sort(function (a, b) { return String(a['Post Date']).localeCompare(String(b['Post Date'])); });
 
-// One Slack summary carried on every item; the Slack node runs executeOnce.
+// One alert summary carried on every item; the notify node runs executeOnce.
+// Real emoji, not :shortcodes: - WhatsApp does not render those.
 const lines = rows.map(function (r) {
   let warn = '';
-  if (r.Status === 'NEEDS_REWRITE') warn = '  :warning: failed anti-slop twice';
-  else if (r.Status === 'VERIFY_NUMBERS') warn = '  :mag: check the numbers';
-  return '*' + r.Pillar + '* (' + r['Post Date'] + ')' + warn + '\\n>' + r.Hook;
+  if (r.Status === 'NEEDS_REWRITE') warn = '  \u26a0\ufe0f failed anti-slop twice';
+  else if (r.Status === 'VERIFY_NUMBERS') warn = '  \ud83d\udd0d check the numbers';
+  return '*' + r.Pillar + '* (' + r['Post Date'] + ')' + warn + '\\n' + r.Hook;
 });
 const flagged = rows.filter(function (r) { return r.Status === 'NEEDS_REWRITE'; }).length;
 const unverified = rows.filter(function (r) { return r.Status === 'VERIFY_NUMBERS'; }).length;
 
-let summary = ':pencil: *' + rows.length + ' LinkedIn drafts ready for review*\\n\\n' + lines.join('\\n\\n');
-if (flagged) summary += '\\n\\n' + flagged + ' draft(s) failed the anti-slop check twice and are flagged NEEDS_REWRITE.';
-if (unverified) summary += '\\n\\n' + unverified + ' Social Proof draft(s) contain metrics the model generated. Verify or replace every number before posting.';
+let summary = '\ud83d\udcdd *' + rows.length + ' LinkedIn drafts ready for review*\\n\\n' + lines.join('\\n\\n');
+if (flagged) summary += '\\n\\n\u26a0\ufe0f ' + flagged + ' draft(s) failed the anti-slop check twice and are flagged NEEDS_REWRITE.';
+if (unverified) summary += '\\n\\n\ud83d\udd0d ' + unverified + ' Social Proof draft(s) contain metrics the model generated. Verify or replace every number before posting.';
 if (cfg.sheetUrl) summary += '\\n\\nSheet: ' + cfg.sheetUrl;
 if (cfg.notionUrl) summary += '\\nNotion: ' + cfg.notionUrl;
 
 return rows.map(function (r) {
-  return { json: Object.assign({}, r, { _slackSummary: summary }) };
+  return { json: Object.assign({}, r, { _alertSummary: summary }) };
 });`
     }
   }
@@ -630,23 +631,31 @@ const saveToNotion = node({
   }
 });
 
-const notifySlack = node({
-  type: 'n8n-nodes-base.slack',
-  version: 2.5,
+// WhatsApp rather than Slack: creating a Slack app needs a desktop browser and a
+// credential this instance does not have, while the WhatsApp credential already works
+// and is already used for error alerts in the Dubai lead-handler workflow.
+const notifyWhatsApp = node({
+  type: 'n8n-nodes-base.whatsApp',
+  version: 1.1,
   config: {
-    name: 'Notify Slack',
+    name: 'Notify WhatsApp',
     executeOnce: true,
-    // Drafts are already in the sheet by now; a missing credential costs the ping only.
+    // Drafts are already in the sheet by now; a failed send costs the ping only.
     onError: 'continueRegularOutput',
     parameters: {
       resource: 'message',
-      operation: 'post',
-      select: 'channel',
-      channelId: { __rl: true, mode: 'name', value: '#linkedin-drafts' },
+      operation: 'send',
+      messagingProduct: 'whatsapp',
+      phoneNumberId: '1042618395611960',
+      recipientPhoneNumber: '+201142339381',
       messageType: 'text',
-      text: expr('{{ $json._slackSummary }}'),
-      otherOptions: {}
-    }
+      // Read from Format Rows, NOT $json. Save to Google Sheet maps with `defineBelow`
+      // and an 8-column schema, so it drops every other field from its output. Reading
+      // $json here yields undefined and WhatsApp rejects the send with a missing body.
+      textBody: expr("{{ $('Format Rows').first().json._alertSummary }}"),
+      additionalFields: { previewUrl: true }
+    },
+    credentials: { whatsAppApi: { id: '0LIX9sb3jYmhIEen', name: 'WhatsApp account 3' } }
   }
 });
 
@@ -657,19 +666,21 @@ const errorTrigger = trigger({
 });
 
 const alertFailure = node({
-  type: 'n8n-nodes-base.slack',
-  version: 2.5,
+  type: 'n8n-nodes-base.whatsApp',
+  version: 1.1,
   config: {
     name: 'Alert Failure',
     parameters: {
       resource: 'message',
-      operation: 'post',
-      select: 'channel',
-      channelId: { __rl: true, mode: 'name', value: '#linkedin-drafts' },
+      operation: 'send',
+      messagingProduct: 'whatsapp',
+      phoneNumberId: '1042618395611960',
+      recipientPhoneNumber: '+201142339381',
       messageType: 'text',
-      text: expr(':rotating_light: The LinkedIn content engine failed in *{{ $json.execution.lastNodeExecuted }}*\n{{ $json.execution.error.message }}\n{{ $json.execution.url }}'),
-      otherOptions: {}
-    }
+      textBody: expr('⚠️ *LinkedIn content engine failed*\nWorkflow: {{ $json.workflow.name }}\nFailed at node: {{ $json.execution.lastNodeExecuted }}\nError: {{ $json.execution.error.message }}\n{{ $json.execution.url }}'),
+      additionalFields: {}
+    },
+    credentials: { whatsAppApi: { id: '0LIX9sb3jYmhIEen', name: 'WhatsApp account 3' } }
   }
 });
 
@@ -692,8 +703,8 @@ const noteWriting = sticky(
 );
 
 const noteStorage = sticky(
-  '## 4. Storage and Review\nThe order is deliberate. The **Sheet is the system of record and is written first**. Notion and Slack both continue on error, so a missing credential costs a mirror or a notification, never a week of drafts.\n\nNotion and Slack need credentials added before they do anything. See the repo README.',
-  [formatRows, saveToSheet, saveToNotion, notifySlack],
+  '## 4. Storage and Review\nThe order is deliberate. The **Sheet is the system of record and is written first**. Notion and WhatsApp both continue on error, so a failure there costs a mirror or a notification, never a week of drafts.\n\nNotion still needs a credential before it does anything. See the repo README.',
+  [formatRows, saveToSheet, saveToNotion, notifyWhatsApp],
   { color: 6 }
 );
 
@@ -715,7 +726,7 @@ export default workflow('leadsync-linkedin-engine', 'LeadSync Perpetual LinkedIn
   .to(formatRows)
   .to(saveToSheet)
   .to(saveToNotion)
-  .to(notifySlack)
+  .to(notifyWhatsApp)
   .add(errorTrigger)
   .to(alertFailure)
   .add(noteSource)
