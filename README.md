@@ -8,7 +8,7 @@ It is not a "generate 3 posts" script. Anything can do that. The difference is t
 [Anti-Slop Protocol](docs/anti-slop-protocol.md), which is enforced in code, not just
 asked for in a prompt.
 
-**Live workflow:** [`ELZxVjqbYCWDDiGM`](https://malekabdelrahman22.app.n8n.cloud/workflow/ELZxVjqbYCWDDiGM) — currently **inactive**, see [Go live](#go-live).
+**Live workflow:** [`ELZxVjqbYCWDDiGM`](https://malekabdelrahman22.app.n8n.cloud/workflow/ELZxVjqbYCWDDiGM) — **active**. Fires Mondays at 09:00 Africa/Cairo.
 
 ---
 
@@ -65,8 +65,8 @@ at credentials that already live in n8n.
 
 ## Go live
 
-Every integration is connected and verified end to end. The only thing left is the
-timezone and the Active toggle.
+Everything below is done. This section is kept as a record of what each integration
+needed, since none of it is obvious from the workflow alone.
 
 ### 1. Google Sheet — ✅ done
 
@@ -144,14 +144,16 @@ Verified on execution 37: pages created with every property mapped, including
 > shared from the Notion UI (**⋯ → Connections → Connect to**). Nothing about that step
 > could be automated.
 
-### 4. Activate
+### 4. Activate — ✅ done
 
-Toggle the workflow **Active**.
+The workflow is **active** and fires Mondays at **09:00 Africa/Cairo**.
 
-> ⚠️ **Your n8n instance timezone is UTC.** Confirmed from a live run
-> (`"Timezone": "UTC (UTC+00:00)"`). So "Monday 9AM" currently fires at **09:00 UTC** —
-> 1PM if you're in Dubai. Either change the instance timezone in n8n Settings, or change
-> `triggerAtHour` on the trigger node to compensate.
+The instance default is UTC while generated timestamps were resolving to +03:00, so the
+workflow now pins `timezone: Africa/Cairo` in its own settings. That overrides the
+instance default, so the schedule is unambiguous regardless of what the instance says.
+
+Test data from the verification runs was cleared from the sheet (`Posts!A2:H1000`);
+header and formatting kept. The Notion pages from those runs were left in place.
 
 ---
 
