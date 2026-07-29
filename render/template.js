@@ -29,14 +29,24 @@ const { validateSpec, ARTEFACTS } = require('./artefacts');
 const FONT_DIR = path.join(__dirname, 'fonts');
 const UI_STACK = "-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,'Liberation Sans',sans-serif";
 
+const FONT_FILES = [['Caveat', 'Caveat.ttf', 700], ['Arch', 'ArchitectsDaughter.ttf', 400]];
+
 let FONT_CSS = null;
-function fontCss() {
+function fontCss(fontBase) {
+  // Serving the page from a webhook means shipping it in a Code node, and a
+  // megabyte of base64 does not belong there. Pointing at the font files in the
+  // repo keeps the page small; they are pinned to a commit, and the page still
+  // waits for document.fonts.ready either way.
+  if (fontBase) {
+    return FONT_FILES.map(([family, file, weight]) =>
+      "@font-face{font-family:'" + family + "';font-weight:" + weight + ";font-display:block;" +
+      "src:url(" + fontBase + '/' + file + ") format('truetype')}").join('');
+  }
   if (FONT_CSS) return FONT_CSS;
-  const face = (family, file, weight) =>
+  FONT_CSS = FONT_FILES.map(([family, file, weight]) =>
     "@font-face{font-family:'" + family + "';font-weight:" + weight + ";font-display:block;" +
     "src:url(data:font/ttf;base64," + fs.readFileSync(path.join(FONT_DIR, file)).toString('base64') +
-    ") format('truetype')}";
-  FONT_CSS = face('Caveat', 'Caveat.ttf', 700) + face('Arch', 'ArchitectsDaughter.ttf', 400);
+    ") format('truetype')}").join('');
   return FONT_CSS;
 }
 
@@ -52,7 +62,8 @@ function artefactSrc() {
  * `spec` bakes a spec into the page. Pass null for a shell that reads its spec
  * from the URL hash instead.
  */
-function buildPage(spec) {
+function buildPage(spec, opts) {
+  opts = opts || {};
   if (spec !== null) {
     const problems = validateSpec(spec);
     if (problems.length) throw new Error('invalid visual spec: ' + problems.join('; '));
@@ -73,7 +84,7 @@ function buildPage(spec) {
   return `<!doctype html>
 <html><head><meta charset="utf-8"><title>LeadSync card</title>
 <style>
-${fontCss()}
+${fontCss(opts.fontBase)}
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{width:1024px;height:1024px;overflow:hidden}
 body{background:#EDEAE3;font-family:${UI_STACK}}
@@ -319,13 +330,13 @@ ${artefactSrc()}
 }
 
 /** A page with the spec baked in. Used by the local preview. */
-function buildHtml(spec) {
-  return buildPage(spec);
+function buildHtml(spec, opts) {
+  return buildPage(spec, opts);
 }
 
-/** A page that reads its spec from the URL hash. Published once, driven by the workflow. */
-function buildShell() {
-  return buildPage(null);
+/** A page that reads its spec from the URL hash. Served once, driven by the workflow. */
+function buildShell(opts) {
+  return buildPage(null, opts);
 }
 
 module.exports = { buildHtml, buildShell, buildPage, validateSpec, ARTEFACTS };

@@ -1,12 +1,14 @@
 # LeadSync Perpetual LinkedIn Content Engine
 
-Generates **3 LinkedIn posts every Monday at 9AM**, maps each to one of Malek's 4 content
-pillars, runs them through a deterministic anti-slop validator, and parks them in Google
-Sheets (and Notion) and emails you a digest for review.
+Generates **3 LinkedIn posts every Monday at 9AM** for LeadSync, an AI automation studio
+for real estate. Each post is mapped to one of Malek's 4 content pillars, run through a
+deterministic anti-slop validator, given its own generated image, parked in Google Sheets
+(and Notion), and emailed to you as a digest: picture and text, ready to post.
 
-It is not a "generate 3 posts" script. Anything can do that. The difference is the
-[Anti-Slop Protocol](docs/anti-slop-protocol.md), which is enforced in code, not just
-asked for in a prompt.
+It is not a "generate 3 posts" script. Anything can do that. Two things are different.
+The [Anti-Slop Protocol](docs/anti-slop-protocol.md) is enforced in code, not asked for
+in a prompt. And the image is not a stock illustration bolted onto the text — the post
+specifies the [artefact](docs/visuals.md) it is arguing about, and the renderer draws it.
 
 **Live workflow:** [`ELZxVjqbYCWDDiGM`](https://malekabdelrahman22.app.n8n.cloud/workflow/ELZxVjqbYCWDDiGM) — **active**. Fires Mondays at 09:00 Africa/Cairo.
 
@@ -26,10 +28,11 @@ Every Monday 9AM
   → Passed?  ── yes ─────────────────────────────┐
               └─ no → Rewrite Post → Re-validate ┤
   → All Drafts                                  ←┘
-  → Format Rows
+  → Format Rows             builds the card URL from the post's visual spec
+  → Render Cards            screenshots the card page (continues on error)
   → Save to Google Sheet    ← SYSTEM OF RECORD, written first
   → Save to Notion          (continues on error)
-  → Build Digest → Attach Markdown → Email Digest   (continues on error)
+  → Build Digest → Attach Markdown → Bundle Attachments → Email Digest
 
 On Failure → Alert Failure  (separate error-trigger branch)
 ```
@@ -79,6 +82,8 @@ made the long post column push everything to the floor of a giant row.
 
 ```
 Post Date | Pillar | Hook | The Text | Image Idea | Source URL | Status | Generated At
+
+`Image Idea` holds the card URL. Open it to see the image; the spec lives in the hash.
 ```
 
 `Set Config → sheetUrl` already points at it, so the link shows up in the email digest.

@@ -66,7 +66,7 @@ verified rather than guessed at by parsing:
   "solution":   "what LeadSync actually does about it",
   "bullets":    ["how-to 1", "how-to 2", "how-to 3"],
   "cta":        "low-friction ask",
-  "image_idea": "description for Malek to design and upload"
+  "visual": { "headline": "...", "note": "...", "footer": "...", "artefact_json": "..." }
 }
 ```
 
