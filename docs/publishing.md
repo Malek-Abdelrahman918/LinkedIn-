@@ -52,22 +52,25 @@ day. `Due Today` returns at most one row per day and logs how many it left behin
 
 ## Setup
 
-The workflow is built and inactive. It cannot post until:
+Done. The `LinkedIn account` credential is connected to the **Post to LinkedIn** node
+and the author is pinned to the person URN resolved through it. The workflow is active.
 
-1. **A LinkedIn credential exists.** LinkedIn has no shared OAuth app, so this needs
-   your own: create an app at [linkedin.com/developers](https://www.linkedin.com/developers/),
-   add the **Share on LinkedIn** and **Sign In with OpenID Connect** products, paste
-   n8n's redirect URL into the app's Auth tab, then connect it on the
-   **Post to LinkedIn** node. The scope that matters is `w_member_social`.
-2. **You pick yourself.** With the credential connected, the *Person* dropdown on that
-   node populates from your profile. It is deliberately empty until then.
-3. **You activate it.**
+If the credential is ever replaced, re-resolve the author: the *Person* dropdown on that
+node reads the profile from the credential, and a stale URN posts as nobody.
 
 ## What is verified and what is not
 
-Verified by dry run (publishing disabled): the sheet read, the date and status gate,
-the stale-row guard, the one-per-day cap, and the render — a 374 kB PNG came back for
-the row selected for 2026-07-31.
+Verified: the sheet read, the date and status gate, the stale-row guard, the one-per-day
+cap, and the render — a 374 kB PNG came back for the row selected for 2026-07-31.
+Resolving the profile name through the credential is itself a live authenticated call to
+LinkedIn, so OAuth works.
 
-Not verified: the LinkedIn call itself and the `Mark Posted` write-back, because both
-require the credential. The first real post is the test. Watch that run.
+Not verified: **the post call and the `Mark Posted` write-back.** Proving those means
+publishing something real. Two things could still bite:
+
+- The app may be missing the `w_member_social` scope. Auth succeeding does not imply
+  permission to post.
+- The image upload is a separate LinkedIn API step from the text.
+
+Activation was safe to do blind because nothing is dated today — the queue was run with
+publishing disabled first and returned zero rows. The first live post is the real test.
