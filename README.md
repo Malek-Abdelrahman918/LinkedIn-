@@ -12,6 +12,7 @@ specifies the [artefact](docs/visuals.md) it is arguing about, and the renderer 
 
 **Live workflow:** [`ELZxVjqbYCWDDiGM`](https://malekabdelrahman22.app.n8n.cloud/workflow/ELZxVjqbYCWDDiGM) — **active**. Fires Mondays at 09:00 Africa/Cairo.
 **Card renderer:** [`jiOceub7MxpBrjv0`](https://malekabdelrahman22.app.n8n.cloud/workflow/jiOceub7MxpBrjv0) — **active**. Serves the image page. See [docs/visuals.md](docs/visuals.md).
+**Publisher:** [`ed3rmPiKQGB7Wu9t`](https://malekabdelrahman22.app.n8n.cloud/workflow/ed3rmPiKQGB7Wu9t) — **inactive**, waiting on a LinkedIn credential. See [docs/publishing.md](docs/publishing.md).
 
 ---
 
