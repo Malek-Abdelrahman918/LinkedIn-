@@ -58,19 +58,33 @@ and the author is pinned to the person URN resolved through it. The workflow is 
 If the credential is ever replaced, re-resolve the author: the *Person* dropdown on that
 node reads the profile from the credential, and a stale URN posts as nobody.
 
-## What is verified and what is not
+## Verified end to end
 
-Verified: the sheet read, the date and status gate, the stale-row guard, the one-per-day
-cap, and the render — a 374 kB PNG came back for the row selected for 2026-07-31.
-Resolving the profile name through the credential is itself a live authenticated call to
-LinkedIn, so OAuth works.
+Friday 2026-07-31, 11:00 Cairo, execution 88, no human in the loop:
 
-Not verified: **the post call and the `Mark Posted` write-back.** Proving those means
-publishing something real. Two things could still bite:
+| Step | Result |
+| --- | --- |
+| `Due Today` | selected the one row dated that day |
+| `Render Card` | PNG returned |
+| `Post to LinkedIn` | `urn:li:share:7488866125976346625` |
+| `Mark Posted` | wrote `POSTED` back to the row |
 
-- The app may be missing the `w_member_social` scope. Auth succeeding does not imply
-  permission to post.
-- The image upload is a separate LinkedIn API step from the text.
+Saturday and Sunday fired and correctly did nothing: ~2.5s each against Friday's 11s.
+The no-op path is as important as the posting path, and both are now proven.
 
-Activation was safe to do blind because nothing is dated today — the queue was run with
-publishing disabled first and returned zero rows. The first live post is the real test.
+## On reach
+
+The first post got 5 impressions. Before tuning anything, know which of these you are
+looking at:
+
+- **Audience size.** LinkedIn seeds a new post to a small cohort from your existing
+  network and expands only if that cohort engages. On an account with few followers or
+  little posting history, single-digit impressions is what a cold start looks like. No
+  prompt change fixes this; weeks of consistent posting is the fix.
+- **Format.** Every post here ships with one image. Single-image posts are widely
+  believed to get less reach than text-only ones. That is a hypothesis, not a fact, and
+  it is worth measuring rather than assuming — the pipeline can post some weeks with the
+  card and some without and compare.
+- **The first two lines.** They are all most people see before "see more". Right now the
+  hook and the opening of the problem often do the same job twice, so the preview burns
+  both lines saying one thing. That is a prompt fix and the cheapest of the three.
