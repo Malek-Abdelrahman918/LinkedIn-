@@ -127,49 +127,51 @@ function shell(chip, body, opts) {
   </div></div>`;
 }
 
-/* 1 — statement */
-const c1 = shell('Real estate · Speed to lead', `
-  <h1>A portal lead at 22:41<br>does not wait for <span class="hi">09:12</span>.</h1>
-  <div class="sub">They message the next agent. First reply wins the viewing, and after
-  hours is when most enquiries land.</div>
+/* Each layout carries a different service line and a different vertical, so the
+   set proves the system covers the nine services on the site rather than one. */
+
+/* 1 — statement · internal operations */
+const c1 = shell('Internal operations', `
+  <h1>Nobody was hired to <span class="hi">move data</span> between tabs.</h1>
+  <div class="sub">Onboarding, approvals, expense routing, the internal lookups.
+  The work that fills a day and appears in no one's job description.</div>
 `);
 
-/* 2 — flow */
-const c2 = shell('Lead handling', `
-  <h2>What happens between the enquiry<br>and the agent.</h2>
+/* 2 — flow · document processing */
+const c2 = shell('Document processing', `
+  <h2>An invoice arrives. Six people<br>never have to see it.</h2>
   <div class="nodes">
-    <div class="node"><div class="lbl">Source</div><div class="val">Portal enquiry</div>
-      <div class="note">Property Finder, Bayut, Dubizzle</div></div>
+    <div class="node"><div class="lbl">Source</div><div class="val">Document in</div>
+      <div class="note">Email, WhatsApp, portal upload</div></div>
     <div class="arrow">→</div>
-    <div class="node on"><div class="lbl">Zara</div><div class="val">Qualify &amp; reply</div>
-      <div class="note">Budget, area, timeline. Arabic or English.</div></div>
+    <div class="node on"><div class="lbl">Extract</div><div class="val">Read &amp; validate</div>
+      <div class="note">Line items, totals, VAT, duplicates</div></div>
     <div class="arrow">→</div>
-    <div class="node"><div class="lbl">Destination</div><div class="val">Agent + CRM</div>
-      <div class="note">Routed with the thread attached</div></div>
+    <div class="node"><div class="lbl">Destination</div><div class="val">Wherever it belongs</div>
+      <div class="note">ERP, Drive, the approval queue</div></div>
   </div>
-  <div class="cap">No one re-types the lead. The agent picks up a conversation that already started.</div>
+  <div class="cap">Only the exceptions reach a person. That is the entire point.</div>
 `);
 
-/* 3 — terminal */
-const c3 = shell('How it is built', `
-  <h2>The rule that answers at 3am.</h2>
+/* 3 — terminal · customer support */
+const c3 = shell('Customer support', `
+  <h2>The rule that ends<br>&ldquo;let me check and get back to you&rdquo;.</h2>
   <div class="term">
-    <div class="tbar"><i></i><i></i><i></i><span>workflows/qualify-lead.n8n</span></div>
-    <div class="code"><span class="c"># trigger: portal enquiry lands</span>
-<span class="k">on</span> <span class="s">"webhook:portal.enquiry"</span> {
-  lead   = enrich(enquiry.contact)
-  intent = claude.classify(enquiry.body)
+    <div class="tbar"><i></i><i></i><i></i><span>workflows/first-line-support.n8n</span></div>
+    <div class="code"><span class="c"># trigger: inbound message, any channel</span>
+<span class="k">on</span> <span class="s">"message:inbound"</span> {
+  ctx = knowledge.search(message.body)
 
-  <span class="k">if</span> intent == <span class="s">"viewing_request"</span> {
-    whatsapp.reply(zara.draft(lead))
-    crm.upsert(lead, status=<span class="s">"hot"</span>)
-    agent.notify(lead.owner)
+  <span class="k">if</span> ctx.confidence &gt; <span class="s">0.8</span> {
+    reply(claude.answer(message, ctx))
+  } <span class="k">else</span> {
+    human.escalate(message, ctx)  <span class="c"># with full history</span>
   }
 }</div>
   </div>
 `);
 
-/* 4 — thread */
+/* 4 — thread · lead handling · Zara. Invented scenario, so it is labelled. */
 const c4 = shell('Illustrative example · Zara', `
   <h2>Answered in eight seconds. At 3am.</h2>
   <div class="thread">
@@ -184,20 +186,20 @@ const c4 = shell('Illustrative example · Zara', `
   </div>
 `);
 
-/* 5 — panel */
-const c5 = shell('Back office', `
-  <h2>One price change. Four places to type it.</h2>
+/* 5 — panel · data pipelines. No invented figures: the contrast is the point. */
+const c5 = shell('Data pipelines', `
+  <h2>Stop exporting the same CSV<br>every Monday.</h2>
   <div class="rows">
-    <div class="r"><div class="rl">CRM listing record</div><div class="a">manual</div>
-      <div class="arw">→</div><div class="z">automatic</div></div>
-    <div class="r"><div class="rl">Property Finder</div><div class="a">manual</div>
-      <div class="arw">→</div><div class="z">automatic</div></div>
-    <div class="r"><div class="rl">Bayut &amp; Dubizzle</div><div class="a">manual</div>
-      <div class="arw">→</div><div class="z">automatic</div></div>
-    <div class="r on"><div class="rl">Time per change</div><div class="a">52 min</div>
-      <div class="arw">→</div><div class="z">one edit</div></div>
+    <div class="r"><div class="rl">Pulling the export</div><div class="a">by hand</div>
+      <div class="arw">→</div><div class="z">scheduled</div></div>
+    <div class="r"><div class="rl">Dedupe and normalise</div><div class="a">by hand</div>
+      <div class="arw">→</div><div class="z">on write</div></div>
+    <div class="r"><div class="rl">The numbers leadership sees</div><div class="a">last week</div>
+      <div class="arw">→</div><div class="z">live</div></div>
+    <div class="r on"><div class="rl">Monday morning</div><div class="a">the report</div>
+      <div class="arw">→</div><div class="z">already done</div></div>
   </div>
-  <div class="cap">The work was never hard. It just kept happening.</div>
+  <div class="cap">The report was never the hard part. The hour before it was.</div>
 `);
 
 const html = `<!doctype html><html><head><meta charset="utf-8"><style>${FONT_CSS}${CSS}</style></head>
