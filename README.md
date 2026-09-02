@@ -1,7 +1,10 @@
 # LeadSync Perpetual LinkedIn Content Engine
 
-Generates **3 LinkedIn posts every Monday at 9AM** for LeadSync, an AI automation studio
-for real estate. Each post is mapped to one of Malek's 4 content pillars, run through a
+Generates **3 LinkedIn posts every Monday at 9AM** for LeadSync, an AI automation studio.
+LeadSync sells the build, not a product: lead handling, sales workflows, support bots,
+internal operations, document processing, data pipelines, reporting dashboards,
+e-commerce and content workflows, for agencies, SaaS, e-commerce and real estate.
+Each post is mapped to one of Malek's 4 content pillars, run through a
 deterministic anti-slop validator, given its own generated image, parked in Google Sheets
 (and Notion), and emailed to you as a digest: picture and text, ready to post.
 

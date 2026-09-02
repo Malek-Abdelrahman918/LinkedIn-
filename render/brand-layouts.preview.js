@@ -171,17 +171,19 @@ const c3 = shell('Customer support', `
   </div>
 `);
 
-/* 4 — thread · lead handling · Zara. Invented scenario, so it is labelled. */
-const c4 = shell('Illustrative example · Zara', `
+/* 4 — thread · lead handling. The build is the product, not any one bot, so
+   nothing here is branded. The scenario is invented and the reply is a claim
+   about what we would build, so the chip labels it an example. */
+const c4 = shell('Example · Lead handling', `
   <h2>Answered in eight seconds. At 3am.</h2>
   <div class="thread">
-    <div class="thd"><div class="av">Z</div>
-      <div><div class="who">Zara · LeadSync</div><div class="st">online · replies instantly</div></div></div>
+    <div class="thd"><div class="av">◆</div>
+      <div><div class="who">Inbound enquiry</div><div class="st">website form · out of hours</div></div></div>
     <div class="msgs">
-      <div class="b in">Hi, is the JVC studio still available?<span class="t">02:58</span></div>
-      <div class="b out">Yes, it is. Are you looking to move in before September?<span class="t">02:58 ✓✓</span></div>
-      <div class="b in">Yes. Can I view tomorrow morning?<span class="t">03:01</span></div>
-      <div class="evt">◆ Viewing booked · agent notified · CRM updated</div>
+      <div class="b in">Hi, do you still have availability for September?<span class="t">02:58</span></div>
+      <div class="b out">We do. Is this for the team plan or a single seat?<span class="t">02:58 ✓✓</span></div>
+      <div class="b in">Team. Can someone call me tomorrow morning?<span class="t">03:01</span></div>
+      <div class="evt">◆ Call booked · owner notified · CRM updated</div>
     </div>
   </div>
 `);

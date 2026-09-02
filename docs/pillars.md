@@ -6,8 +6,8 @@ without a pillar is a post without a reason to exist.
 | Pillar | Shorthand | What it does | Reader leaves with |
 |---|---|---|---|
 | **Educational** | Aha! moments | Teaches one specific mechanic, usually by flipping something the reader believed | A thing they can do today |
-| **Social Proof** | Receipts | A concrete result with real numbers | Evidence that this works |
-| **Thought Leadership** | Anti-Cold Call | Argues a position on why outbound is broken | A side to agree or disagree with |
+| **Social Proof** | Receipts | A true own result, or a labelled worked example | Evidence that this works |
+| **Thought Leadership** | The Argument | Argues a position on how this work should be done | A side to agree or disagree with |
 | **Personal** | Founder Behind the Bot | Malek as a person, not a vendor | A reason to trust the human |
 
 ## Rotation
@@ -38,10 +38,16 @@ consecutive weeks each pillar appears exactly three times:
 automation to save time" is not an aha. "Syncing nightly is worse than not syncing,
 because it makes people trust stale data" is.
 
-**Social Proof.** Numbers must be real. The workflow prompt explicitly forbids inventing
-named customers, testimonials, or statistics attributed to real companies. Where there's
-no client detail available, the post is written as Malek's own result from building
-LeadSync — which is true and still counts as a receipt.
+**Social Proof.** There are exactly two legal shapes, and the prompt's HONESTY section
+draws the line. Either a result that actually happened, which includes Malek's own
+internal tooling and the workflows he has shipped. Or a worked example that says so in
+the post text, opening with "Example, not a client:". What is banned is the third shape:
+an invented result presented as delivered work. Named customers, testimonials and
+statistics attributed to real companies are never allowed, labelled or not.
+
+A claim about how the work usually goes is not a company claim and needs no label.
+"Enquiries that land after 10pm get answered the next morning" is an observation about
+the world. Only claims about what LeadSync did, fixed, or would do carry the label.
 
 **Thought Leadership.** Must take a side someone could disagree with. If nobody could
 object to it, it's a status update wearing a suit. The prompt requires naming the
