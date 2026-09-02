@@ -631,16 +631,31 @@ const formatRows = node({
       jsCode: `const cfg = $('Set Config').first().json;
 const generatedAt = $now.toISO();
 
+// The prompt's HONESTY rule: a claim about what LeadSync did or would do, if it
+// did not happen, has to say so in the post text. A post that says so is
+// publishable as written.
+const HONESTY_LABELS = ['example, not a client', 'made up numbers, real mechanic'];
+
+function labelled(text) {
+  const lower = String(text || '').toLowerCase();
+  for (let i = 0; i < HONESTY_LABELS.length; i++) {
+    if (lower.indexOf(HONESTY_LABELS[i]) !== -1) return true;
+  }
+  return false;
+}
+
 const rows = $input.all().map(function (item) {
   const j = item.json;
   const post = j.post || {};
   const pillar = j.pillar || post.pillar || '';
 
-  // Social Proof asks for numbers the model does not actually have, so it invents
-  // plausible ones. Flag those rows: the metric must be checked before posting.
+  // Social Proof used to be flagged by pillar alone, so every one of them was
+  // held and none ever published. A labelled post is honest about being an
+  // example and goes out as a draft. An unlabelled one is claiming a real
+  // result, and that is the case a human should check before it is published.
   let status;
   if (!j.ok) status = 'NEEDS_REWRITE';
-  else if (pillar === 'Social Proof') status = 'VERIFY_NUMBERS';
+  else if (pillar === 'Social Proof' && !labelled(j.text)) status = 'VERIFY_NUMBERS';
   else status = 'DRAFT';
 
   return {

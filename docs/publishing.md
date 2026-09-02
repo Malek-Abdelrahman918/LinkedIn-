@@ -29,9 +29,18 @@ Statuses:
 
 - **DRAFT** — passed the anti-slop validator. Publishes automatically.
 - **APPROVED** — you released it by hand. Publishes automatically.
-- **VERIFY_NUMBERS** — **held.** These posts contain figures the model invented. The
-  digest says so in the email. A schedule should not decide to publish an invented
-  number to a real audience, so the row waits until you change the cell to `APPROVED`.
+- **VERIFY_NUMBERS** — **held.** A Social Proof post that claims a result without
+  saying the figure is an example. The digest says so in the email. A schedule should
+  not decide to publish an unlabelled invented number to a real audience, so the row
+  waits until you change the cell to `APPROVED`.
+
+  This used to fire on the pillar alone, with no look at the text, so *every* Social
+  Proof post was held. Fourteen of them accumulated between July and September and not
+  one ever published, which quietly cut the real cadence from three posts a week to
+  two. Now that the prompt's HONESTY rule makes an invented company claim carry a
+  label in the post text, a labelled post is honest as written and goes out as a
+  `DRAFT`. Only the unlabelled claim is held, which is the case that actually needs a
+  human to check the figure.
 - **NEEDS_REWRITE** — held. Failed the validator twice.
 - **POSTED** — written back after LinkedIn accepts the post. A row can never go out
   twice, and re-running the publisher on the same day is a no-op.
