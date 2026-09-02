@@ -40,31 +40,37 @@ Solution: the mechanism LeadSync would build. Not a promise, and not a named pro
 Bullets: actionable how-tos, useful even to someone who never hires LeadSync. Exactly 3 unless a 4th earns its place. No leading dash or emoji inside the bullet strings.
 CTA: low friction and lead-shaped. The best CTA gets the reader to describe their own version of the problem, because that reply is the lead. A reply keyword, or a question answerable from their own experience in five seconds. Never "book a call".
 
-THE VISUAL. Every post ships with a visual object. It is rendered into the image: a realistic artefact on warm paper, marked up in red pen. It is not a description of a picture, it is the data in the picture. Invent plausible, specific detail: real-looking names, times, amounts, tool names. Match the detail to the business the post is about. An e-commerce post shows order refs and Shopify, not AED apartment prices.
+THE VISUAL. Every post ships with a visual object rendered into the image. It is not a description of a picture, it is the content of the picture. The card is LeadSync brand: deep navy ground, one cyan accent, Inter for type and JetBrains Mono for data. There is no paper, no handwriting and no red pen.
 
-visual.headline. The handwritten line above the artefact. Lowercase, under 46 characters. It names what we are looking at, not what to conclude. "monday's inbound enquiries." not "why speed to lead matters".
-visual.note. The verdict, in red pen. Two short lines separated by a newline, under 40 characters each. This is the only place the point gets stated.
-visual.footer. One quiet typed line under the card. The thought the reader leaves with.
-visual.artefact_json. A JSON string. Pick the artefact that shows the problem. Do not default to the spreadsheet.
+visual.spec_json. A JSON string holding the whole card spec. Every card has these three:
+  layout, one of: statement, flow, terminal, thread, panel. Pick the one that shows the point. Do not default to one.
+  chip, the service line this post is about, in two or three words. Internal operations, Document processing, Customer support, Lead handling, Sales workflows, Data pipelines, Reporting dashboards, E-commerce automation, Content workflows. If the card shows something LeadSync did or would do that did not actually happen, start the chip with "Example, " as in "Example, Lead handling".
+  headline, the line on the card, under 90 characters. Wrap two or three words in pipes to print them in cyan: "Nobody was hired to |move data| between tabs." One pipe pair at most, on the words that carry the point. Do not repeat the post hook word for word. The card states the fact, the post explains it.
 
-  sheet, for any log or comparison, in any industry. Response times, order exceptions, invoices awaiting approval, duplicate records, one item across three systems.
-  {"type":"sheet","columns":["Enquiry","Source","Came in","We replied","Gap","Outcome"],"rows":[{"cells":["A. Haddad","Website form","22:41","09:12","!10h 31m","!No response"]},{"cells":["M. Sultan","WhatsApp","08:52","08:56","~4m","~Call booked"],"mark":"g1"}]}
-  Six to nine rows, four to six columns, every row exactly as long as columns. Prefix a cell with ! to print it red, ~ to print it green. Keep cells short.
+Then the fields for the layout you picked.
 
-  chat, for anything about enquiries, response time, support or WhatsApp.
-  {"type":"chat","title":"Website enquiry","subtitle":"+971 55 9082","messages":[{"dir":"in","text":"Hi, is this still available?","time":"22:41","mark":"g1"},{"sep":"next morning"},{"dir":"out","text":"Yes! when suits you?","time":"09:18","mark":"g2"}],"tail":"no reply"}
-  dir is "in" for the customer, "out" for us. Four to six messages.
+  statement, for one claim that needs no diagram.
+  {"layout":"statement","chip":"Internal operations","headline":"Nobody was hired to |move data| between tabs.","sub":"Onboarding, approvals, expense routing. The work that fills a day and appears in no one job description."}
+  sub is one or two sentences, under 170 characters.
 
-  calendar, for anything about where a working day goes. Works for an agent, an ops manager, a support lead, a founder.
-  {"type":"calendar","slots":[{"time":"08:00","label":"Reply to overnight enquiries","tone":"admin","mark":"g1"},{"time":"10:00","label":"Customer call","tone":"sell"}]}
-  Six to nine slots. tone is "admin" for work that should be automated, "sell" for the work worth doing, "neutral" otherwise. Give adjacent admin slots the same mark so the pen brackets them as one block.
+  flow, for a process with a before, a middle and an after.
+  {"layout":"flow","chip":"Document processing","headline":"An invoice arrives. Six people never have to see it.","nodes":[{"label":"Source","value":"Document in","note":"Email, WhatsApp, portal upload"},{"label":"Extract","value":"Read and validate","note":"Line items, totals, VAT","on":true},{"label":"Destination","value":"Where it belongs","note":"ERP, Drive, approval queue"}],"caption":"Only the exceptions reach a person."}
+  Two or three nodes. label is one word, value is two to four words, note is a short phrase. Put "on":true on the node doing the work.
 
-  listing, for property posts only. Listings, pricing, portal hygiene.
-  {"type":"listing","price":"AED 1,690,000","address":"2 BR Apartment, Jumeirah Village Circle","meta":["1,204 sqft","Balcony","Unfurnished"],"photoCount":"11 photos","photoMark":"g2","badges":[{"text":"Listed 94 days ago","tone":"warn","mark":"g1"},{"text":"Ref DXB-4417"}],"description":"Bright two bedroom in a quiet tower.","agent":"Reem, listed by agency","buttons":["Call","Email","WhatsApp"]}
+  terminal, for a rule or a mechanic that is clearer as code.
+  {"layout":"terminal","chip":"Customer support","headline":"The rule that ends |let me check and get back to you|.","file":"workflows/first-line-support.n8n","code":["# trigger: inbound message, any channel","on \"message:inbound\" {","  ctx = knowledge.search(message.body)","","  if ctx.confidence > 0.8 {","    reply(answer(message, ctx))","  } else {","    human.escalate(message, ctx)","  }","}"]}
+  Three to fourteen lines, each under 64 characters. Readable pseudocode, not a real language. Comments start with #.
+
+  thread, for enquiries, response time or support conversations.
+  {"layout":"thread","chip":"Example, Lead handling","headline":"Answered in eight seconds. At 3am.","who":"Inbound enquiry","status":"website form, out of hours","messages":[{"dir":"in","text":"Hi, do you still have availability for September?","time":"02:58"},{"dir":"out","text":"We do. Team plan or a single seat?","time":"02:58"},{"dir":"in","text":"Team. Can someone call me tomorrow?","time":"03:01"}],"event":"Call booked, owner notified, CRM updated"}
+  Three to five messages, each under 72 characters. dir is "in" for the customer, "out" for us. event is the outcome line and is optional.
+
+  panel, for a before and after across several things at once.
+  {"layout":"panel","chip":"Data pipelines","headline":"Stop exporting the same CSV every Monday.","rows":[{"label":"Pulling the export","from":"by hand","to":"scheduled"},{"label":"Dedupe and normalise","from":"by hand","to":"on write"},{"label":"Monday morning","from":"the report","to":"already done","on":true}],"caption":"The report was never the hard part."}
+  Three to five rows. label under 34 characters, from and to are one to three words. Put "on":true on the row that lands the point.
 
 VISUAL RULES.
-1. Mark something. An unmarked artefact is just a screenshot. Use the same mark id for things the pen should circle as one group.
-2. Every number in the note must be countable off the artefact. A note saying "six hours of admin" needs exactly six admin slots. This is checked.
-3. The note must not claim anything the artefact does not show. If the card shows one listing, it cannot say "cheapest of the three".
-4. The artefact and the post are the same story. The hook and the note point at the same fact.
-5. The artefact is invented data. It illustrates the problem, so it needs no label. But if the post claims LeadSync produced the after state, that claim is a company claim and the HONESTY rule applies to the post text.
+1. The card and the post are the same story. The card headline and the post hook point at the same fact.
+2. Every figure on the card must agree with the post. If the card shows three steps, the post cannot say five.
+3. The chip names the service line, and the post has to actually be about that service line.
+4. If the card shows a LeadSync result that did not happen, the chip starts with "Example, " and the post carries the label from the HONESTY rule.

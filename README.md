@@ -5,7 +5,7 @@ LeadSync sells the build, not a product: lead handling, sales workflows, support
 internal operations, document processing, data pipelines, reporting dashboards,
 e-commerce and content workflows, for agencies, SaaS, e-commerce and real estate.
 Each post is mapped to one of Malek's 4 content pillars, run through a
-deterministic anti-slop validator, given its own generated image, parked in Google Sheets
+deterministic anti-slop validator, given its own generated brand card, parked in Google Sheets
 (and Notion), and emailed to you as a digest: picture and text, ready to post.
 
 It is not a "generate 3 posts" script. Anything can do that. Two things are different.
