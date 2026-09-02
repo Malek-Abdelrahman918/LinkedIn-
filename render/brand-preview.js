@@ -14,8 +14,8 @@ const fs = require('fs');
 const path = require('path');
 const { buildBrandHtml } = require('./brand-template');
 
-const specsPath = process.argv[2] || path.join(__dirname, 'brand-samples.json');
-const outDir = process.argv[3] || path.join(__dirname, 'out', 'brand');
+const specsPath = path.resolve(process.argv[2] || path.join(__dirname, 'brand-samples.json'));
+const outDir = path.resolve(process.argv[3] || path.join(__dirname, 'out', 'brand'));
 
 const CHROMIUM = process.env.CHROMIUM_PATH || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 const PLAYWRIGHT = process.env.PLAYWRIGHT_PATH || '/opt/node22/lib/node_modules/playwright';
