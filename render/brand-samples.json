@@ -1,0 +1,62 @@
+[
+  {
+    "layout": "statement",
+    "chip": "Internal operations",
+    "headline": "Nobody was hired to |move data| between tabs.",
+    "sub": "Onboarding, approvals, expense routing, the internal lookups. The work that fills a day and appears in no one's job description."
+  },
+  {
+    "layout": "flow",
+    "chip": "Document processing",
+    "headline": "An invoice arrives. Six people never have to see it.",
+    "nodes": [
+      { "label": "Source", "value": "Document in", "note": "Email, WhatsApp, portal upload" },
+      { "label": "Extract", "value": "Read and validate", "note": "Line items, totals, VAT, duplicates", "on": true },
+      { "label": "Destination", "value": "Where it belongs", "note": "ERP, Drive, approval queue" }
+    ],
+    "caption": "Only the exceptions reach a person. That is the entire point."
+  },
+  {
+    "layout": "terminal",
+    "chip": "Customer support",
+    "headline": "The rule that ends |let me check and get back to you|.",
+    "file": "workflows/first-line-support.n8n",
+    "code": [
+      "# trigger: inbound message, any channel",
+      "on \"message:inbound\" {",
+      "  ctx = knowledge.search(message.body)",
+      "",
+      "  if ctx.confidence > 0.8 {",
+      "    reply(answer(message, ctx))",
+      "  } else {",
+      "    human.escalate(message, ctx)  # with full history",
+      "  }",
+      "}"
+    ]
+  },
+  {
+    "layout": "thread",
+    "chip": "Example · Lead handling",
+    "headline": "Answered in eight seconds. At 3am.",
+    "who": "Inbound enquiry",
+    "status": "website form · out of hours",
+    "messages": [
+      { "dir": "in", "text": "Hi, do you still have availability for September?", "time": "02:58" },
+      { "dir": "out", "text": "We do. Is this for the team plan or a single seat?", "time": "02:58" },
+      { "dir": "in", "text": "Team. Can someone call me tomorrow morning?", "time": "03:01" }
+    ],
+    "event": "Call booked · owner notified · CRM updated"
+  },
+  {
+    "layout": "panel",
+    "chip": "Data pipelines",
+    "headline": "Stop exporting the same CSV every Monday.",
+    "rows": [
+      { "label": "Pulling the export", "from": "by hand", "to": "scheduled" },
+      { "label": "Dedupe and normalise", "from": "by hand", "to": "on write" },
+      { "label": "The numbers leadership sees", "from": "last week", "to": "live" },
+      { "label": "Monday morning", "from": "the report", "to": "already done", "on": true }
+    ],
+    "caption": "The report was never the hard part. The hour before it was."
+  }
+]
