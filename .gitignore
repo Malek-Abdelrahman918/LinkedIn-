@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Secrets — credentials live in n8n, never in this repo
+.env
+.env.*
+!.env.example
+*.pem
+*credentials*.json
+service-account*.json
+
+# Local n8n exports that may contain resolved IDs
+workflows/*.local.json
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Logs
+*.log
+npm-debug.log*
+
+# Local render output — regenerate with node render/preview.js
+render/out/
