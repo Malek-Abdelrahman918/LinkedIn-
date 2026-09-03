@@ -350,6 +350,11 @@ const selectAngles = node({
       language: 'javaScript',
       jsCode: `const cfg = $('Set Config').first().json;
 const pillars = Array.isArray(cfg.pillars) ? cfg.pillars : ['Educational', 'Social Proof', 'Thought Leadership', 'Personal'];
+
+// The five card layouts, rotated the same way the pillars are. Left to itself
+// the model picks one shape and stays there, which is the repeated-template
+// problem the brand work was meant to solve.
+const LAYOUTS = ['statement', 'flow', 'terminal', 'thread', 'panel'];
 const wanted = Number(cfg.postsPerWeek) || 3;
 const historyRows = Number(cfg.historyRows) || 40;
 
@@ -433,6 +438,9 @@ return chosen.map(function (angle, i) {
   return {
     json: {
       pillar: pillars[(isoWeek * wanted + i) % pillars.length],
+      // 3 posts and 5 layouts are coprime, so every layout comes up evenly and
+      // the three posts in one week never share a shape.
+      layout: LAYOUTS[(isoWeek * wanted + i) % LAYOUTS.length],
       title: angle.title,
       summary: angle.summary,
       link: angle.link,

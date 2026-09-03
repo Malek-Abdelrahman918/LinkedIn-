@@ -32,6 +32,31 @@ consecutive weeks each pillar appears exactly three times:
 
 (Exact starting offset depends on the week number; the pattern is what matters.)
 
+## Layout rotation
+
+The card layout rotates on the same mechanism, from the same ISO week number:
+
+```js
+layoutIndex = (isoWeekNumber * 3 + i) % 5   // i = 0, 1, 2
+```
+
+Three posts a week and five layouts are coprime, so all five come up evenly and the
+three posts in any one week never share a shape. The layout is **assigned**, not chosen:
+left to itself the model picks one structure and stays there, which is the repeated
+template problem in a new coat. The brand does not move. Only the structure does.
+
+| Week | Post 1 | Post 2 | Post 3 |
+|---|---|---|---|
+| 36 | thread | panel | statement |
+| 37 | flow | terminal | thread |
+| 38 | panel | statement | flow |
+| 39 | terminal | thread | panel |
+
+Writing to an assigned layout is a feature rather than a constraint to route around. A
+terminal card forces the mechanic into pseudocode; a thread forces the writer to find
+the conversation in the story. The same week's material comes out differently depending
+on which shape it has to fit.
+
 ## Guardrails per pillar
 
 **Educational.** The "aha" has to be something that is actually counterintuitive. "Use
